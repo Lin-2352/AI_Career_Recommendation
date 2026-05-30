@@ -1,0 +1,292 @@
+{
+  "metadata": {
+    "schema_version": 1,
+    "application_version": "1.0.0",
+    "trained_at_utc": "2026-05-30T19:09:37+00:00",
+    "record_count": 1171,
+    "training_records": 936,
+    "test_records": 235,
+    "target_count": 37,
+    "estimator": "LogisticRegression",
+    "accuracy": 0.2468,
+    "top_3_accuracy": 0.6213,
+    "top_5_accuracy": 0.9362,
+    "dependencies": {
+      "pandas": "3.0.3",
+      "scikit_learn": "1.8.0",
+      "scipy": "1.17.1",
+      "streamlit": "1.58.0",
+      "joblib": "1.5.3"
+    }
+  },
+  "label_distribution": {
+    "AI Researcher": 4,
+    "AI Specialist": 3,
+    "Automation Engineer": 3,
+    "Backend Developer": 4,
+    "Biostatistician": 3,
+    "Business": 197,
+    "Business Analyst": 7,
+    "Cloud Engineer": 4,
+    "Content Strategist": 6,
+    "Cybersecurity Analyst": 3,
+    "Cybersecurity Specialist": 3,
+    "Data Analyst": 19,
+    "Data Engineer": 3,
+    "Data Scientist": 6,
+    "Deep Learning Engineer": 3,
+    "Design": 195,
+    "DevOps Engineer": 4,
+    "Digital Marketer": 11,
+    "Embedded Systems Engineer": 3,
+    "Finance": 209,
+    "Financial Analyst": 6,
+    "Front-end Developer": 8,
+    "Full Stack Developer": 3,
+    "Graphic Designer": 10,
+    "Healthcare": 192,
+    "Machine Learning Engineer": 7,
+    "Marketing Manager": 3,
+    "Mobile Developer": 3,
+    "NLP Engineer": 4,
+    "Project Manager": 8,
+    "Research Analyst": 3,
+    "Research Scientist": 4,
+    "Software Developer": 7,
+    "Software Engineer": 4,
+    "Tech": 207,
+    "UX Designer": 8,
+    "UX Researcher": 4
+  },
+  "classification_report": {
+    "AI Researcher": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "AI Specialist": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "Automation Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Backend Developer": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1.0
+    },
+    "Biostatistician": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Business": {
+      "precision": 0.2692307692307692,
+      "recall": 0.358974358974359,
+      "f1-score": 0.3076923076923077,
+      "support": 39.0
+    },
+    "Business Analyst": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1.0
+    },
+    "Cloud Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Content Strategist": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1-score": 0.6666666666666666,
+      "support": 1.0
+    },
+    "Cybersecurity Analyst": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "Cybersecurity Specialist": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Data Analyst": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1-score": 0.6666666666666666,
+      "support": 4.0
+    },
+    "Data Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Data Scientist": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Deep Learning Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Design": {
+      "precision": 0.21951219512195122,
+      "recall": 0.23076923076923078,
+      "f1-score": 0.225,
+      "support": 39.0
+    },
+    "DevOps Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Digital Marketer": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1-score": 0.6666666666666666,
+      "support": 2.0
+    },
+    "Embedded Systems Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Finance": {
+      "precision": 0.18181818181818182,
+      "recall": 0.09523809523809523,
+      "f1-score": 0.125,
+      "support": 42.0
+    },
+    "Financial Analyst": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Front-end Developer": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1-score": 0.6666666666666666,
+      "support": 2.0
+    },
+    "Full Stack Developer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Graphic Designer": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1-score": 0.6666666666666666,
+      "support": 2.0
+    },
+    "Healthcare": {
+      "precision": 0.2653061224489796,
+      "recall": 0.34210526315789475,
+      "f1-score": 0.2988505747126437,
+      "support": 38.0
+    },
+    "Machine Learning Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Mobile Developer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "NLP Engineer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Project Manager": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 2.0
+    },
+    "Research Analyst": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "Research Scientist": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1-score": 0.6666666666666666,
+      "support": 1.0
+    },
+    "Software Developer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "Software Engineer": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1-score": 0.6666666666666666,
+      "support": 1.0
+    },
+    "Tech": {
+      "precision": 0.14285714285714285,
+      "recall": 0.12195121951219512,
+      "f1-score": 0.13157894736842105,
+      "support": 41.0
+    },
+    "UX Designer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 2.0
+    },
+    "UX Researcher": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1.0
+    },
+    "accuracy": 0.24680851063829787,
+    "macro avg": {
+      "precision": 0.2938534558743618,
+      "recall": 0.28191772687921596,
+      "f1-score": 0.2709663471233344,
+      "support": 235.0
+    },
+    "weighted avg": {
+      "precision": 0.25164304151627154,
+      "recall": 0.24680851063829787,
+      "f1-score": 0.24018180999086122,
+      "support": 235.0
+    }
+  }
+}
