@@ -33,6 +33,7 @@ class SequencedOpenAIClient:
 
     def __init__(self, outcomes: List[Any]) -> None:
         self.chat = SimpleNamespace(completions=SequencedChatCompletions(outcomes))
+        self.models = SimpleNamespace(list=lambda: SimpleNamespace(data=[]))
 
 
 @pytest.fixture

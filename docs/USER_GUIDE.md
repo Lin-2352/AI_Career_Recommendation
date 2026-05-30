@@ -50,17 +50,20 @@ The analyzer provides:
 
 Generate interview questions from the selected role and skills. Paste a STAR answer to check whether Situation, Task, Action, and Result are present and whether the Result includes a metric.
 
-The audio sandbox records a mock answer through Streamlit. OpenAI transcription is optional and requires `OPENAI_KEYS`; filler-word analysis can run on either API transcript text or pasted transcript text.
+The audio sandbox records a mock answer through Streamlit. OpenAI transcription is optional and requires `CAREER_AI_OPENAI_API_KEYS`; filler-word analysis can run on either API transcript text or pasted transcript text.
 
-The chatbot uses local dataset retrieval and Kimi when `MOONSHOT_KEYS` is configured. Resume files can be attached in the chat input flow.
+The chatbot uses local dataset retrieval and the first configured chat provider in this order: Moonshot, OpenRouter, Fireworks, NVIDIA NIM, then Cloudflare Workers AI. Resume files can be attached in the chat input flow.
 
 ## Environment Keys
 
 Copy `.env.example` to `.env` and set only the providers you plan to use.
 
 ```text
-MOONSHOT_KEYS=["your_kimi_key"]
-OPENAI_KEYS=["your_openai_key"]
+CAREER_AI_MOONSHOT_API_KEYS=["your_kimi_key"]
+CAREER_AI_OPENROUTER_API_KEYS=["your_openrouter_key"]
+CAREER_AI_OPENAI_API_KEYS=["your_openai_key"]
 ```
+
+Local label-style entries such as `open router key 1: <secret>` are also supported so existing private `.env` files keep working. Use `python scripts/03_validate_api_keys.py` for a redacted key availability check.
 
 Leave keys empty for offline model, student, pivot, ATS, and interview heuristic features.

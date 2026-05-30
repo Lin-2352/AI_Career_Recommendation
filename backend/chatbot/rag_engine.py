@@ -38,11 +38,12 @@ class DatasetRAGEngine:
         self._vectorizer: TfidfVectorizer | None = None
         self._matrix: Any = None
 
-    def discover_dataset_files(self, limit: int = 9) -> list[Path]:
-        """Return up to nine CSV datasets from the configured raw directory."""
+    def discover_dataset_files(self, limit: int | None = None) -> list[Path]:
+        """Return CSV datasets from the configured raw directory."""
         if not self.raw_dir.exists():
             return []
-        return sorted(path for path in self.raw_dir.glob("*.csv") if path.is_file())[:limit]
+        files = sorted(path for path in self.raw_dir.glob("*.csv") if path.is_file())
+        return files if limit is None else files[:limit]
 
     def build_index(self) -> int:
         """Load datasets and build a local TF-IDF vector index."""
@@ -119,7 +120,7 @@ class KimiRAGChatbot:
         self,
         api_manager: APIManager | None = None,
         rag_engine: DatasetRAGEngine | None = None,
-        model: str = "kimi-k2.6",
+        model: str | None = None,
     ) -> None:
         """Initialize chatbot dependencies."""
         self.api_manager = api_manager or APIManager()
@@ -150,10 +151,12 @@ class KimiRAGChatbot:
             if role in {"user", "assistant"} and content:
                 messages.append({"role": role, "content": content})
         messages.append({"role": "user", "content": user_query})
+        provider = self.api_manager.preferred_chat_provider()
+        model = self.model or self.api_manager.provider_model(provider)
         return self.api_manager.chat_completion(
             messages=messages,
-            provider="moonshot",
-            model=self.model,
+            provider=provider,
+            model=model,
             max_tokens=1200,
             temperature=0.25,
             extra_body={"thinking": {"type": "disabled"}},

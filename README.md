@@ -56,11 +56,12 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Set keys only when you want external AI features:
+Set keys only when you want external AI features. Professional variable names are used in `.env.example`, and the app also supports local label-style entries such as `open router key 1: <secret>` for compatibility.
 
 ```text
-MOONSHOT_KEYS=["your_kimi_key"]
-OPENAI_KEYS=["your_openai_key_for_audio_transcription"]
+CAREER_AI_MOONSHOT_API_KEYS=["your_kimi_key"]
+CAREER_AI_OPENROUTER_API_KEYS=["your_openrouter_key"]
+CAREER_AI_OPENAI_API_KEYS=["your_openai_key_for_audio_transcription"]
 ```
 
 The core app, model recommendations, ATS checks, and tests work without live API calls.
@@ -95,7 +96,7 @@ Tracked training inputs are:
 - `data/raw/career_recommendation.csv`
 - `data/raw/student_scores_sanitized.csv`
 
-Additional raw CSVs can be placed in `data/raw/` for local RAG and analysis, but new raw CSVs are ignored by Git by default to avoid committing large or sensitive datasets.
+Additional raw CSVs can be placed in `data/raw/` for local RAG and analysis. The app scans every CSV in that folder at runtime, while new raw CSVs are ignored by Git by default to avoid committing large or sensitive datasets.
 
 ```powershell
 python scripts/01_prepare_data.py
@@ -111,6 +112,18 @@ python -m pytest -q
 ```
 
 The API suite uses mocked OpenAI-compatible clients and never triggers live endpoints.
+
+Run a redacted key inventory check without token generation:
+
+```powershell
+python scripts/03_validate_api_keys.py
+```
+
+Run one minimal chat request through the active rotation pool:
+
+```powershell
+python scripts/03_validate_api_keys.py --chat-ping
+```
 
 ## Documentation
 

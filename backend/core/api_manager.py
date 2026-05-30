@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 import json
 import os
+from pathlib import Path
 import threading
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
@@ -22,6 +23,14 @@ DEFAULT_MODEL = "kimi-k2.6"
 DEFAULT_BASE_URL = "https://api.moonshot.cn/v1"
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
+DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_OPENROUTER_MODEL = "moonshotai/kimi-k2.6"
+DEFAULT_FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1"
+DEFAULT_FIREWORKS_MODEL = "accounts/fireworks/models/llama-v3p1-8b-instruct"
+DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+DEFAULT_NVIDIA_MODEL = "deepseek-ai/deepseek-v4-flash"
+DEFAULT_CLOUDFLARE_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+CHAT_PROVIDER_PRIORITY = ["moonshot", "openrouter", "fireworks", "nvidia", "cloudflare"]
 
 
 class APIKeyPoolExhaustedError(RuntimeError):
@@ -61,6 +70,25 @@ class ProviderConfig:
     keys: List[APIKeyState] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class LabeledAPIKey:
+    """API key parsed from a label-style local `.env` line."""
+
+    label: str
+    value: str
+
+
+@dataclass(frozen=True)
+class APIHealthCheckResult:
+    """Redacted outcome from a safe API key validation check."""
+
+    provider: str
+    key: str
+    status: str
+    model: str
+    detail: str
+
+
 class APIManager:
     """Manage provider keys, token accounting, rotation, and retry behavior."""
 
@@ -70,7 +98,7 @@ class APIManager:
         Args:
             provider_configs: Optional provider configurations for tests or custom runtime wiring.
         """
-        load_dotenv()
+        self._env_values, self._labeled_keys = load_application_environment()
         self._lock = threading.Lock()
         self._encoding_cache: Dict[str, Any] = {}
         self._tokenizer_available = True
@@ -82,6 +110,10 @@ class APIManager:
         )
         configs = list(provider_configs) if provider_configs is not None else [
             self._load_moonshot_config(),
+            self._load_openrouter_config(),
+            self._load_fireworks_config(),
+            self._load_nvidia_config(),
+            self._load_cloudflare_config(),
             self._load_openai_config(),
         ]
         for config in configs:
@@ -89,35 +121,127 @@ class APIManager:
 
     def _load_moonshot_config(self) -> ProviderConfig:
         """Load the Moonshot/Kimi provider config from environment variables."""
-        keys = parse_key_list(os.getenv("MOONSHOT_KEYS") or os.getenv("KIMI_KEYS") or os.getenv("OPENROUTER_KEYS") or "")
-        single_key = os.getenv("MOONSHOT_API_KEY") or os.getenv("KIMI_API_KEY")
-        if single_key and single_key not in keys:
-            keys.append(single_key)
-        quota = parse_int(os.getenv("MOONSHOT_SAFE_TOKEN_QUOTA"), DEFAULT_SAFE_TOKEN_QUOTA)
+        keys = collect_provider_keys(
+            self._env_values,
+            self._labeled_keys,
+            array_names=["CAREER_AI_MOONSHOT_API_KEYS", "MOONSHOT_KEYS", "KIMI_KEYS"],
+            single_names=["CAREER_AI_MOONSHOT_API_KEY", "MOONSHOT_API_KEY", "KIMI_API_KEY"],
+            label_keywords=["moonshot", "kimi"],
+        )
+        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_MOONSHOT_SAFE_TOKEN_QUOTA", "MOONSHOT_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="moonshot",
-            base_url=os.getenv("MOONSHOT_BASE_URL", DEFAULT_BASE_URL),
-            model=os.getenv("MOONSHOT_MODEL", DEFAULT_MODEL),
-            key_env_var="MOONSHOT_KEYS",
-            quota_env_var="MOONSHOT_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["CAREER_AI_MOONSHOT_BASE_URL", "MOONSHOT_BASE_URL"], DEFAULT_BASE_URL),
+            model=get_env_value(self._env_values, ["CAREER_AI_MOONSHOT_MODEL", "MOONSHOT_MODEL"], DEFAULT_MODEL),
+            key_env_var="CAREER_AI_MOONSHOT_API_KEYS",
+            quota_env_var="CAREER_AI_MOONSHOT_SAFE_TOKEN_QUOTA",
+            keys=states,
+        )
+
+    def _load_openrouter_config(self) -> ProviderConfig:
+        """Load OpenRouter provider config from professional and legacy variables."""
+        keys = collect_provider_keys(
+            self._env_values,
+            self._labeled_keys,
+            array_names=["CAREER_AI_OPENROUTER_API_KEYS", "OPENROUTER_KEYS"],
+            single_names=["CAREER_AI_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+            label_keywords=["open router", "openrouter"],
+        )
+        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_OPENROUTER_SAFE_TOKEN_QUOTA", "OPENROUTER_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
+        return ProviderConfig(
+            provider="openrouter",
+            base_url=get_env_value(self._env_values, ["CAREER_AI_OPENROUTER_BASE_URL", "OPENROUTER_BASE_URL"], DEFAULT_OPENROUTER_BASE_URL),
+            model=get_env_value(self._env_values, ["CAREER_AI_OPENROUTER_MODEL", "OPENROUTER_MODEL"], DEFAULT_OPENROUTER_MODEL),
+            key_env_var="CAREER_AI_OPENROUTER_API_KEYS",
+            quota_env_var="CAREER_AI_OPENROUTER_SAFE_TOKEN_QUOTA",
+            keys=states,
+        )
+
+    def _load_fireworks_config(self) -> ProviderConfig:
+        """Load Fireworks AI provider config from professional and label-style variables."""
+        keys = collect_provider_keys(
+            self._env_values,
+            self._labeled_keys,
+            array_names=["CAREER_AI_FIREWORKS_API_KEYS", "FIREWORKS_API_KEYS"],
+            single_names=["CAREER_AI_FIREWORKS_API_KEY", "FIREWORKS_API_KEY"],
+            label_keywords=["fireworks"],
+        )
+        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_FIREWORKS_SAFE_TOKEN_QUOTA", "FIREWORKS_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
+        return ProviderConfig(
+            provider="fireworks",
+            base_url=get_env_value(self._env_values, ["CAREER_AI_FIREWORKS_BASE_URL", "FIREWORKS_BASE_URL"], DEFAULT_FIREWORKS_BASE_URL),
+            model=get_env_value(self._env_values, ["CAREER_AI_FIREWORKS_MODEL", "FIREWORKS_MODEL"], DEFAULT_FIREWORKS_MODEL),
+            key_env_var="CAREER_AI_FIREWORKS_API_KEYS",
+            quota_env_var="CAREER_AI_FIREWORKS_SAFE_TOKEN_QUOTA",
+            keys=states,
+        )
+
+    def _load_nvidia_config(self) -> ProviderConfig:
+        """Load NVIDIA NIM provider config from professional and label-style variables."""
+        keys = collect_provider_keys(
+            self._env_values,
+            self._labeled_keys,
+            array_names=["CAREER_AI_NVIDIA_NIM_API_KEYS", "NVIDIA_NIM_API_KEYS"],
+            single_names=["CAREER_AI_NVIDIA_NIM_API_KEY", "NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY"],
+            label_keywords=["nvidia", "nim"],
+        )
+        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_NVIDIA_NIM_SAFE_TOKEN_QUOTA", "NVIDIA_NIM_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
+        return ProviderConfig(
+            provider="nvidia",
+            base_url=get_env_value(self._env_values, ["CAREER_AI_NVIDIA_NIM_BASE_URL", "NVIDIA_NIM_BASE_URL"], DEFAULT_NVIDIA_BASE_URL),
+            model=get_env_value(self._env_values, ["CAREER_AI_NVIDIA_NIM_MODEL", "NVIDIA_NIM_MODEL"], DEFAULT_NVIDIA_MODEL),
+            key_env_var="CAREER_AI_NVIDIA_NIM_API_KEYS",
+            quota_env_var="CAREER_AI_NVIDIA_NIM_SAFE_TOKEN_QUOTA",
+            keys=states,
+        )
+
+    def _load_cloudflare_config(self) -> ProviderConfig:
+        """Load Cloudflare Workers AI provider config when account metadata exists."""
+        keys = collect_provider_keys(
+            self._env_values,
+            self._labeled_keys,
+            array_names=["CAREER_AI_CLOUDFLARE_WORKERS_API_KEYS", "CLOUDFLARE_WORKERS_API_KEYS"],
+            single_names=["CAREER_AI_CLOUDFLARE_WORKERS_API_KEY", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_KEY"],
+            label_keywords=["worker ai", "workers ai", "cloudflare"],
+        )
+        account_id = get_env_value(self._env_values, ["CAREER_AI_CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"], "")
+        base_url = get_env_value(
+            self._env_values,
+            ["CAREER_AI_CLOUDFLARE_WORKERS_BASE_URL", "CLOUDFLARE_WORKERS_BASE_URL"],
+            f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1" if account_id else "",
+        )
+        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA", "CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys if base_url]
+        return ProviderConfig(
+            provider="cloudflare",
+            base_url=base_url,
+            model=get_env_value(self._env_values, ["CAREER_AI_CLOUDFLARE_WORKERS_MODEL", "CLOUDFLARE_WORKERS_MODEL"], DEFAULT_CLOUDFLARE_MODEL),
+            key_env_var="CAREER_AI_CLOUDFLARE_WORKERS_API_KEYS",
+            quota_env_var="CAREER_AI_CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
     def _load_openai_config(self) -> ProviderConfig:
         """Load OpenAI provider config for speech transcription when configured."""
-        keys = parse_key_list(os.getenv("OPENAI_KEYS") or "")
-        single_key = os.getenv("OPENAI_API_KEY")
-        if single_key and single_key not in keys:
-            keys.append(single_key)
-        quota = parse_int(os.getenv("OPENAI_SAFE_TOKEN_QUOTA"), DEFAULT_SAFE_TOKEN_QUOTA)
+        keys = collect_provider_keys(
+            self._env_values,
+            self._labeled_keys,
+            array_names=["CAREER_AI_OPENAI_API_KEYS", "OPENAI_KEYS"],
+            single_names=["CAREER_AI_OPENAI_API_KEY", "OPENAI_API_KEY"],
+            label_keywords=["openai", "open ai"],
+        )
+        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_OPENAI_SAFE_TOKEN_QUOTA", "OPENAI_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="openai",
-            base_url=os.getenv("OPENAI_BASE_URL", DEFAULT_OPENAI_BASE_URL),
-            model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", DEFAULT_TRANSCRIPTION_MODEL),
-            key_env_var="OPENAI_KEYS",
-            quota_env_var="OPENAI_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["CAREER_AI_OPENAI_BASE_URL", "OPENAI_BASE_URL"], DEFAULT_OPENAI_BASE_URL),
+            model=get_env_value(self._env_values, ["CAREER_AI_OPENAI_TRANSCRIPTION_MODEL", "OPENAI_TRANSCRIPTION_MODEL"], DEFAULT_TRANSCRIPTION_MODEL),
+            key_env_var="CAREER_AI_OPENAI_API_KEYS",
+            quota_env_var="CAREER_AI_OPENAI_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -213,10 +337,35 @@ class APIManager:
                 for state in config.keys
             ]
 
+    def configured_providers(self) -> list[str]:
+        """Return providers that currently have at least one usable key configured."""
+        return [name for name, config in self._provider_configs.items() if config.keys]
+
+    def configuration_warnings(self) -> list[str]:
+        """Return non-secret configuration issues detected in the local environment."""
+        warnings: list[str] = []
+        has_worker_labels = any("worker ai" in item.label or "workers ai" in item.label or "cloudflare" in item.label for item in self._labeled_keys)
+        cloudflare_config = self._provider_configs.get("cloudflare")
+        if has_worker_labels and (cloudflare_config is None or not cloudflare_config.keys):
+            warnings.append("Cloudflare Workers AI keys were detected but no account ID/base URL is configured.")
+        return warnings
+
+    def preferred_chat_provider(self) -> str:
+        """Return the highest-priority configured provider for text chat."""
+        for provider in CHAT_PROVIDER_PRIORITY:
+            config = self._provider_configs.get(provider)
+            if config is not None and config.keys:
+                return provider
+        raise APIKeyPoolExhaustedError("No chat provider API keys are configured.")
+
+    def provider_model(self, provider: str) -> str:
+        """Return the configured model for a provider."""
+        return self._get_provider(provider).model
+
     def chat_completion(
         self,
         messages: Sequence[Mapping[str, Any]],
-        provider: str = "moonshot",
+        provider: str = "auto",
         model: Optional[str] = None,
         max_tokens: int = 1024,
         temperature: float = 0.3,
@@ -239,7 +388,8 @@ class APIManager:
             APIKeyPoolExhaustedError: If no usable key remains.
             APIError: If a non-quota provider error occurs.
         """
-        config = self._get_provider(provider)
+        resolved_provider = self.preferred_chat_provider() if provider == "auto" else provider
+        config = self._get_provider(resolved_provider)
         selected_model = model or config.model
         estimated_tokens = self.estimate_tokens(messages, selected_model) + max_tokens
         last_error: Optional[BaseException] = None
@@ -249,13 +399,16 @@ class APIManager:
             state = self._select_key(config, estimated_tokens, attempted_keys)
             attempted_keys.add(state.key)
             client = self._client_factory(state.key, config.base_url)
+            request_extra_body = dict(extra_body or {})
+            if config.provider != "moonshot":
+                request_extra_body.pop("thinking", None)
             try:
                 response = client.chat.completions.create(
                     model=selected_model,
                     messages=list(messages),
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    extra_body=dict(extra_body or {}),
+                    extra_body=request_extra_body,
                 )
                 content = response.choices[0].message.content or ""
                 actual_tokens = extract_usage_tokens(response, estimated_tokens)
@@ -274,6 +427,42 @@ class APIManager:
                 break
 
         raise APIKeyPoolExhaustedError("No API key could complete the request.") from last_error
+
+    def model_list_health_check(self, provider: str) -> list[APIHealthCheckResult]:
+        """Validate configured keys through provider model-list endpoints without token generation."""
+        config = self._get_provider(provider)
+        results: list[APIHealthCheckResult] = []
+        for state in config.keys:
+            if state.status != "active":
+                results.append(APIHealthCheckResult(provider, redact_key(state.key), state.status, config.model, state.last_error))
+                continue
+            client = self._client_factory(state.key, config.base_url)
+            try:
+                client.models.list()
+                results.append(APIHealthCheckResult(provider, redact_key(state.key), "available", config.model, "models endpoint responded"))
+            except (RateLimitError, AuthenticationError, APIConnectionError, APIError) as exc:
+                if is_exhaustion_error(exc):
+                    self._mark_exhausted(state, exc)
+                    results.append(APIHealthCheckResult(provider, redact_key(state.key), "exhausted", config.model, "quota or rate limit response"))
+                else:
+                    self._mark_unavailable(state, exc)
+                    results.append(APIHealthCheckResult(provider, redact_key(state.key), "unavailable", config.model, sanitize_error_detail(exc, state.key)))
+        return results
+
+    def chat_ping_health_check(self, provider: str = "auto") -> APIHealthCheckResult:
+        """Run one minimal chat completion through the rotation path for integration validation."""
+        resolved_provider = self.preferred_chat_provider() if provider == "auto" else provider
+        config = self._get_provider(resolved_provider)
+        response = self.chat_completion(
+            messages=[
+                {"role": "system", "content": "Reply with one word."},
+                {"role": "user", "content": "ok"},
+            ],
+            provider=resolved_provider,
+            max_tokens=2,
+            temperature=0.0,
+        )
+        return APIHealthCheckResult(resolved_provider, "rotation-pool", "available", config.model, response[:40])
 
     def audio_transcription(
         self,
@@ -350,8 +539,15 @@ class APIManager:
         with self._lock:
             state.status = "exhausted"
             state.failures += 1
-            state.last_error = str(exc)
-            LOGGER.critical("API key %s marked exhausted after provider error: %s", redact_key(state.key), exc)
+            state.last_error = sanitize_error_detail(exc, state.key)
+            LOGGER.critical("API key %s marked exhausted after provider error: %s", redact_key(state.key), state.last_error)
+
+    def _mark_unavailable(self, state: APIKeyState, exc: BaseException) -> None:
+        """Mark a key unavailable after a non-quota provider validation failure."""
+        with self._lock:
+            state.status = "unavailable"
+            state.failures += 1
+            state.last_error = sanitize_error_detail(exc, state.key)
 
 
 def parse_key_list(raw_value: str) -> List[str]:
@@ -366,6 +562,92 @@ def parse_key_list(raw_value: str) -> List[str]:
     except json.JSONDecodeError:
         return [part.strip().strip('"').strip("'") for part in value.replace(";", ",").split(",") if part.strip()]
     return []
+
+
+def load_application_environment(env_path: Path | None = None) -> tuple[dict[str, str], list[LabeledAPIKey]]:
+    """Load professional dotenv variables and label-style local key entries."""
+    path = env_path or Path(".env")
+    named_values: dict[str, str] = {}
+    labeled_keys: list[LabeledAPIKey] = []
+    raw_lines: list[str] = []
+    if path.exists():
+        raw_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if all(is_comment_or_assignment(line) for line in raw_lines):
+            load_dotenv(dotenv_path=path, override=False)
+        for line in raw_lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if "=" in stripped:
+                key, value = stripped.split("=", 1)
+                normalized_key = key.strip().removeprefix("export ").strip()
+                normalized_value = strip_wrapping_quotes(value.strip())
+                named_values[normalized_key] = normalized_value
+                os.environ.setdefault(normalized_key, normalized_value)
+            elif ":" in stripped:
+                label, value = stripped.split(":", 1)
+                secret = strip_wrapping_quotes(value.strip())
+                if secret:
+                    labeled_keys.append(LabeledAPIKey(label=label.strip().lower(), value=secret))
+    for key, value in os.environ.items():
+        named_values.setdefault(key, value)
+    return named_values, labeled_keys
+
+
+def is_comment_or_assignment(line: str) -> bool:
+    """Return whether a `.env` line is safe for python-dotenv parsing."""
+    stripped = line.strip()
+    return not stripped or stripped.startswith("#") or "=" in stripped
+
+
+def strip_wrapping_quotes(value: str) -> str:
+    """Remove one matching pair of wrapping quotes from an environment value."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def get_env_value(values: Mapping[str, str], names: Sequence[str], default: str = "") -> str:
+    """Return the first non-empty environment value for the provided variable names."""
+    for name in names:
+        value = values.get(name, "").strip()
+        if value:
+            return value
+    return default
+
+
+def collect_provider_keys(
+    values: Mapping[str, str],
+    labeled_keys: Sequence[LabeledAPIKey],
+    array_names: Sequence[str],
+    single_names: Sequence[str],
+    label_keywords: Sequence[str],
+) -> list[str]:
+    """Collect provider keys from professional variables, legacy variables, and label-style lines."""
+    output: list[str] = []
+    for name in array_names:
+        output.extend(parse_key_list(values.get(name, "")))
+    for name in single_names:
+        value = values.get(name, "").strip()
+        if value:
+            output.append(strip_wrapping_quotes(value))
+    lowered_keywords = [keyword.lower() for keyword in label_keywords]
+    for item in labeled_keys:
+        if any(keyword in item.label for keyword in lowered_keywords):
+            output.append(item.value)
+    return dedupe_keys(output)
+
+
+def dedupe_keys(keys: Sequence[str]) -> list[str]:
+    """Return API keys in source order without duplicates."""
+    output: list[str] = []
+    seen: set[str] = set()
+    for key in keys:
+        cleaned = key.strip()
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            output.append(cleaned)
+    return output
 
 
 def parse_int(raw_value: Optional[str], default: int) -> int:
@@ -384,6 +666,14 @@ def redact_key(key: str) -> str:
     if len(key) <= 8:
         return "****"
     return f"{key[:4]}****{key[-4:]}"
+
+
+def sanitize_error_detail(exc: BaseException, key: str) -> str:
+    """Return provider error text with the active API key removed."""
+    detail = str(exc)
+    if key:
+        detail = detail.replace(key, redact_key(key))
+    return detail
 
 
 def extract_usage_tokens(response: Any, fallback: int) -> int:

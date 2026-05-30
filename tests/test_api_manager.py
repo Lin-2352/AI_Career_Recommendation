@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.core.api_manager import APIKeyPoolExhaustedError, parse_key_list
+from backend.core.api_manager import APIKeyPoolExhaustedError, load_application_environment, parse_key_list
 from tests.conftest import SequencedOpenAIClient, mocked_rate_limit_error, mocked_response
 
 
@@ -13,6 +13,22 @@ def test_parse_key_list_accepts_json_and_delimited_values() -> None:
     assert parse_key_list('["one", "two"]') == ["one", "two"]
     assert parse_key_list("one,two;three") == ["one", "two", "three"]
     assert parse_key_list("") == []
+
+
+def test_label_style_env_lines_are_loaded_without_exposing_values(tmp_path) -> None:
+    """Label-style local key files are mapped to provider-specific key pools."""
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "open router key 1: router-secret\n"
+        "fireworks ai api 1: fireworks-secret\n"
+        "CAREER_AI_NVIDIA_NIM_API_KEYS=[\"nvidia-secret\"]\n",
+        encoding="utf-8",
+    )
+
+    values, labeled = load_application_environment(env_path)
+
+    assert values["CAREER_AI_NVIDIA_NIM_API_KEYS"] == '["nvidia-secret"]'
+    assert [item.label for item in labeled] == ["open router key 1", "fireworks ai api 1"]
 
 
 @patch("backend.core.api_manager.OpenAI")
@@ -75,3 +91,33 @@ def test_all_keys_exhausted_raises_typed_error(openai_factory, api_manager) -> N
 
     status = api_manager.provider_status()
     assert [item["status"] for item in status] == ["exhausted", "exhausted"]
+
+
+@patch("backend.core.api_manager.OpenAI")
+def test_model_list_health_check_uses_redacted_keys(openai_factory, api_manager) -> None:
+    """Model-list validation checks keys without token-generating chat calls."""
+    clients = {
+        "key-alpha-0001": SequencedOpenAIClient([mocked_response("unused")]),
+        "key-bravo-0002": SequencedOpenAIClient([mocked_response("unused")]),
+    }
+    openai_factory.side_effect = lambda api_key, base_url: clients[api_key]
+
+    results = api_manager.model_list_health_check("moonshot")
+
+    assert [result.status for result in results] == ["available", "available"]
+    assert all("key-alpha-0001" not in result.key for result in results)
+
+
+def test_configuration_warning_for_worker_keys_without_account(tmp_path) -> None:
+    """Workers AI label-style keys are reported when the required account ID is absent."""
+    env_path = tmp_path / ".env"
+    env_path.write_text("worker ai key 1: worker-secret\n", encoding="utf-8")
+    values, labeled = load_application_environment(env_path)
+    from backend.core.api_manager import APIManager
+
+    manager = APIManager(provider_configs=[])
+    manager._env_values = values
+    manager._labeled_keys = labeled
+    manager._provider_configs = {"cloudflare": manager._load_cloudflare_config()}
+
+    assert manager.configuration_warnings() == ["Cloudflare Workers AI keys were detected but no account ID/base URL is configured."]

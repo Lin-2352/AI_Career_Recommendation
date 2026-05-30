@@ -120,6 +120,7 @@ def extract_image_text(payload: bytes, extension: str, api_manager: Optional[API
     if api_manager is None:
         raise ValueError("Image parsing requires a configured Kimi API manager.")
     image_url = image_payload_to_data_url(payload, extension)
+    provider = api_manager.preferred_chat_provider()
     content = [
         {"type": "image_url", "image_url": {"url": image_url}},
         {
@@ -132,7 +133,8 @@ def extract_image_text(payload: bytes, extension: str, api_manager: Optional[API
             {"role": "system", "content": "You extract resume text accurately and never add content that is not visible."},
             {"role": "user", "content": content},
         ],
-        model="kimi-k2.6",
+        provider=provider,
+        model=api_manager.provider_model(provider),
         max_tokens=1800,
         temperature=0.0,
         extra_body={"thinking": {"type": "disabled"}},

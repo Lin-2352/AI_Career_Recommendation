@@ -10,7 +10,7 @@ The system is a local-first Streamlit application with a Python backend. It comb
 | --- | --- | --- |
 | Core services | `backend/core/` | API key pooling, token accounting, rotating logs, PDF/DOCX/TXT/image parsing. |
 | Career intelligence | `backend/career_recommender/` | Data preparation, model training, probabilistic ranking, student forecasting, pivot scoring, resume analysis, and interview preparation. |
-| Chatbot and RAG | `backend/chatbot/rag_engine.py` | Loads local CSV datasets, builds a vector index, retrieves context, and calls Kimi through the standard OpenAI client path. |
+| Chatbot and RAG | `backend/chatbot/rag_engine.py` | Loads every local raw CSV dataset, builds a vector index, retrieves context, and calls the best configured OpenAI-compatible chat provider. |
 | Frontend | `frontend/streamlit_app.py`, `frontend/assets/custom_style.css` | Five-tab user workspace, validation, session state, charts, uploads, chat, audio capture, and ATS export. |
 | Tests | `tests/` | Unit and smoke tests for API rotation, parsing, recommendation behavior, ATS math, STAR checks, and Streamlit boot. |
 | Deployment | `Dockerfile`, `docker-compose.yml`, `run_client.*` | Reproducible Streamlit container on port `8501`. |
@@ -22,12 +22,12 @@ The system is a local-first Streamlit application with a Python backend. It comb
 3. `modeling.py` trains TF-IDF plus Multinomial Naive Bayes and stores the artifact.
 4. `recommendation.py` calls `predict_proba()`, reranks with profile alignment, and surfaces top matches.
 5. Resume uploads go through `document_parser.py` and `resume_analyzer.py`.
-6. Chat questions use `DatasetRAGEngine` to retrieve local dataset context before the Kimi request.
+6. Chat questions use `DatasetRAGEngine` to retrieve local dataset context before the LLM request.
 7. All external AI calls use `APIManager`, which estimates tokens, rotates at 80 percent soft cap, and retires keys on quota or rate failures.
 
 ## API Firewall
 
-`backend/core/api_manager.py` loads key pools from `.env`, supports JSON arrays such as `MOONSHOT_KEYS=["key1","key2"]`, and protects providers with:
+`backend/core/api_manager.py` loads key pools from `.env`, supports professional JSON arrays such as `CAREER_AI_OPENROUTER_API_KEYS=["key1","key2"]`, supports legacy variable names, and supports local label-style lines such as `open router key 1: <secret>`.
 
 - `threading.Lock()` around key state changes.
 - Token estimates using `tiktoken` with a deterministic fallback if tokenizer initialization stalls.
@@ -35,6 +35,7 @@ The system is a local-first Streamlit application with a Python backend. It comb
 - Error interception for quota and rate failures, including `402`, `429`, and `insufficient_quota`.
 - Critical logging when a key is retired or rotated.
 - Mocked tests that do not call live endpoints.
+- Redacted model-list health checks that validate configured keys without token generation.
 
 ## UI Architecture
 
@@ -42,4 +43,4 @@ The frontend is intentionally thin. It collects validated inputs, stores multi-s
 
 ## Dataset Strategy
 
-The three curated CSV files required for training are tracked. Additional downloaded raw datasets are local-only by default and can still be used by RAG because the engine scans `data/raw/*.csv` at runtime.
+The three curated CSV files required for model training are tracked. Additional downloaded raw datasets are local-only by default and are still used by RAG, student dashboards, pivot baselines, and degree mapping because the app scans `data/raw/*.csv` at runtime.

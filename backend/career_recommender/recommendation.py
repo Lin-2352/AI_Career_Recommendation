@@ -330,6 +330,7 @@ def placement_probability_forecast(
     gpa: float,
     college_tier: int,
     competencies: Mapping[str, bool | int | float],
+    dataset: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Forecast placement probability and salary tier from academic and competency signals."""
     bounded_gpa = min(max(float(gpa), 0.0), 10.0)
@@ -340,6 +341,24 @@ def placement_probability_forecast(
     tier_bonus = {1: 0.18, 2: 0.11, 3: 0.05, 4: 0.0}[bounded_tier]
     probability = (0.52 * gpa_score) + (0.32 * competency_strength) + tier_bonus
     probability = min(max(probability, 0.05), 0.98)
+    baseline_salary = 0.0
+    if dataset is not None and {"cgpa", "college_tier", "placed"}.issubset(dataset.columns):
+        numeric = dataset.copy()
+        numeric["cgpa"] = pd.to_numeric(numeric["cgpa"], errors="coerce")
+        numeric["college_tier"] = pd.to_numeric(numeric["college_tier"], errors="coerce")
+        numeric["placed"] = pd.to_numeric(numeric["placed"], errors="coerce")
+        nearby = numeric[
+            (numeric["college_tier"] == bounded_tier)
+            & (numeric["cgpa"].between(max(0.0, bounded_gpa - 1.0), min(10.0, bounded_gpa + 1.0)))
+        ]
+        if nearby.empty:
+            nearby = numeric.dropna(subset=["placed"])
+        if not nearby.empty:
+            baseline_probability = float(nearby["placed"].mean())
+            probability = min(max((0.62 * probability) + (0.38 * baseline_probability), 0.05), 0.98)
+            if "salary_lpa" in nearby.columns:
+                salaries = pd.to_numeric(nearby["salary_lpa"], errors="coerce").dropna()
+                baseline_salary = float(salaries.median()) if not salaries.empty else 0.0
     if probability >= 0.82:
         salary_tier = "Premium"
     elif probability >= 0.64:
@@ -353,6 +372,7 @@ def placement_probability_forecast(
         "expected_salary_tier": salary_tier,
         "gpa_score": gpa_score,
         "competency_strength": competency_strength,
+        "baseline_salary_lpa": baseline_salary,
     }
 
 
@@ -383,12 +403,33 @@ def study_habit_viability(
     }
 
 
-def flight_risk_calculator(job_satisfaction: int, work_life_balance: int, years_experience: float) -> dict[str, Any]:
+def flight_risk_calculator(
+    job_satisfaction: int,
+    work_life_balance: int,
+    years_experience: float,
+    dataset: pd.DataFrame | None = None,
+) -> dict[str, Any]:
     """Estimate professional pivot urgency from satisfaction, balance, and tenure signals."""
     satisfaction_risk = 1.0 - (min(max(job_satisfaction, 1), 10) / 10.0)
     balance_risk = 1.0 - (min(max(work_life_balance, 1), 10) / 10.0)
     tenure_factor = min(max(float(years_experience), 0.0), 15.0) / 15.0
     risk = min(max((0.42 * satisfaction_risk) + (0.36 * balance_risk) + (0.22 * tenure_factor), 0.0), 1.0)
+    if dataset is not None and {"Job Satisfaction", "Work-Life Balance", "Years of Experience", "Career Change Interest"}.issubset(dataset.columns):
+        numeric = dataset.copy()
+        numeric["Job Satisfaction"] = pd.to_numeric(numeric["Job Satisfaction"], errors="coerce")
+        numeric["Work-Life Balance"] = pd.to_numeric(numeric["Work-Life Balance"], errors="coerce")
+        numeric["Years of Experience"] = pd.to_numeric(numeric["Years of Experience"], errors="coerce")
+        numeric["Career Change Interest"] = pd.to_numeric(numeric["Career Change Interest"], errors="coerce")
+        nearby = numeric[
+            (numeric["Job Satisfaction"].between(job_satisfaction - 1, job_satisfaction + 1))
+            & (numeric["Work-Life Balance"].between(work_life_balance - 1, work_life_balance + 1))
+            & (numeric["Years of Experience"].between(max(0.0, years_experience - 2.0), years_experience + 2.0))
+        ].dropna(subset=["Career Change Interest"])
+        if nearby.empty:
+            nearby = numeric.dropna(subset=["Career Change Interest"])
+        if not nearby.empty:
+            baseline_risk = float(nearby["Career Change Interest"].clip(lower=0, upper=1).mean())
+            risk = min(max((0.68 * risk) + (0.32 * baseline_risk), 0.0), 1.0)
     if risk >= 0.72:
         recommendation = "Plan an active pivot within 3 months"
     elif risk >= 0.48:

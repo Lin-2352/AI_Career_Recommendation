@@ -81,7 +81,7 @@ def get_raw_tables() -> dict[str, pd.DataFrame]:
     tables: dict[str, pd.DataFrame] = {}
     if not RAW_DATA_DIR.exists():
         return tables
-    for path in sorted(RAW_DATA_DIR.glob("*.csv"))[:9]:
+    for path in sorted(RAW_DATA_DIR.glob("*.csv")):
         try:
             tables[path.name] = pd.read_csv(path)
         except Exception:
@@ -263,9 +263,12 @@ def render_student_hub_tab(tables: Mapping[str, pd.DataFrame]) -> None:
                 "SQL": comp_right.checkbox("SQL", value=True),
                 "Internship": comp_right.checkbox("Internship", value=False),
             }
-            forecast = placement_probability_forecast(gpa, int(college_tier), competencies)
+            placement_baseline = tables.get("student_placement_salary_elite_v2.csv", pd.DataFrame())
+            forecast = placement_probability_forecast(gpa, int(college_tier), competencies, placement_baseline)
             st.metric("Placement probability", stable_percent(forecast["placement_probability"]))
             st.metric("Expected salary tier", forecast["expected_salary_tier"])
+            if forecast["baseline_salary_lpa"]:
+                st.caption(f"Nearest dataset salary baseline: {forecast['baseline_salary_lpa']:.1f} LPA")
         with st.container(border=True):
             st.subheader("Study Habit Optimizer")
             weekly_hours = st.slider("Weekly self-study hours", 0.0, 50.0, 18.0, 1.0)
@@ -304,7 +307,7 @@ def render_student_hub_tab(tables: Mapping[str, pd.DataFrame]) -> None:
                 st.info("No field or education column was found in the selected dataset.")
 
 
-def render_pivot_tab() -> None:
+def render_pivot_tab(tables: Mapping[str, pd.DataFrame]) -> None:
     """Render professional pivot risk and lateral transition mapping."""
     risk_col, transition_col = st.columns([0.9, 1.1], gap="large")
     with risk_col:
@@ -313,7 +316,8 @@ def render_pivot_tab() -> None:
             satisfaction = st.slider("Job satisfaction", 1, 10, 5)
             balance = st.slider("Work-life balance", 1, 10, 5)
             years = st.slider("Years of experience", 0.0, 25.0, 3.0, 0.5)
-            risk = flight_risk_calculator(satisfaction, balance, years)
+            career_change_baseline = tables.get("career_change_prediction_dataset.csv", pd.DataFrame())
+            risk = flight_risk_calculator(satisfaction, balance, years, career_change_baseline)
             st.metric("Time to pivot", stable_percent(risk["time_to_pivot_percent"]))
             st.write(risk["recommendation"])
     with transition_col:
@@ -538,7 +542,7 @@ def main() -> None:
     with tabs[1]:
         render_student_hub_tab(get_raw_tables())
     with tabs[2]:
-        render_pivot_tab()
+        render_pivot_tab(get_raw_tables())
     with tabs[3]:
         render_resume_tab()
     with tabs[4]:
