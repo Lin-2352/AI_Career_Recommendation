@@ -21,13 +21,13 @@ def test_label_style_env_lines_are_loaded_without_exposing_values(tmp_path) -> N
     env_path.write_text(
         "open router key 1: router-secret\n"
         "fireworks ai api 1: fireworks-secret\n"
-        "CAREER_AI_NVIDIA_NIM_API_KEYS=[\"nvidia-secret\"]\n",
+        "NVIDIA_NIM_API_KEYS=[\"nvidia-secret\"]\n",
         encoding="utf-8",
     )
 
     values, labeled = load_application_environment(env_path)
 
-    assert values["CAREER_AI_NVIDIA_NIM_API_KEYS"] == '["nvidia-secret"]'
+    assert values["NVIDIA_NIM_API_KEYS"] == '["nvidia-secret"]'
     assert [item.label for item in labeled] == ["open router key 1", "fireworks ai api 1"]
 
 

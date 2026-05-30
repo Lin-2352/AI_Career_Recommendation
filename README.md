@@ -59,9 +59,9 @@ copy .env.example .env
 Set keys only when you want external AI features. Professional variable names are used in `.env.example`, and the app also supports local label-style entries such as `open router key 1: <secret>` for compatibility.
 
 ```text
-CAREER_AI_MOONSHOT_API_KEYS=["your_kimi_key"]
-CAREER_AI_OPENROUTER_API_KEYS=["your_openrouter_key"]
-CAREER_AI_OPENAI_API_KEYS=["your_openai_key_for_audio_transcription"]
+MOONSHOT_API_KEYS=["your_kimi_key"]
+OPENROUTER_API_KEYS=["your_openrouter_key"]
+OPENAI_API_KEYS=["your_openai_key_for_audio_transcription"]
 ```
 
 The core app, model recommendations, ATS checks, and tests work without live API calls.

@@ -7,6 +7,7 @@ from io import BytesIO
 import json
 import os
 from pathlib import Path
+import re
 import threading
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
@@ -26,11 +27,21 @@ DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_OPENROUTER_MODEL = "moonshotai/kimi-k2.6"
 DEFAULT_FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1"
-DEFAULT_FIREWORKS_MODEL = "accounts/fireworks/models/llama-v3p1-8b-instruct"
+DEFAULT_FIREWORKS_MODEL = "accounts/fireworks/models/kimi-k2p6"
 DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_NVIDIA_MODEL = "deepseek-ai/deepseek-v4-flash"
-DEFAULT_CLOUDFLARE_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+DEFAULT_NVIDIA_MODEL = "moonshotai/kimi-k2.6"
+DEFAULT_CLOUDFLARE_MODEL = "@cf/moonshotai/kimi-k2.6"
 CHAT_PROVIDER_PRIORITY = ["moonshot", "openrouter", "fireworks", "nvidia", "cloudflare"]
+CHATBOT_MODEL_FAMILY_VARIABLES = ["CHATBOT_MODEL_FAMILY", "CHATBOT_MODEL"]
+CHATBOT_MODEL_FAMILY_MAP = {
+    "kimi-k2.6": {
+        "moonshot": "kimi-k2.6",
+        "openrouter": "moonshotai/kimi-k2.6",
+        "fireworks": "accounts/fireworks/models/kimi-k2p6",
+        "nvidia": "moonshotai/kimi-k2.6",
+        "cloudflare": "@cf/moonshotai/kimi-k2.6",
+    }
+}
 
 
 class APIKeyPoolExhaustedError(RuntimeError):
@@ -124,18 +135,23 @@ class APIManager:
         keys = collect_provider_keys(
             self._env_values,
             self._labeled_keys,
-            array_names=["CAREER_AI_MOONSHOT_API_KEYS", "MOONSHOT_KEYS", "KIMI_KEYS"],
-            single_names=["CAREER_AI_MOONSHOT_API_KEY", "MOONSHOT_API_KEY", "KIMI_API_KEY"],
+            array_names=["MOONSHOT_API_KEYS", "MOONSHOT_KEYS", "KIMI_KEYS"],
+            single_names=["MOONSHOT_API_KEY", "MOONSHOT_API_KEY", "KIMI_API_KEY"],
             label_keywords=["moonshot", "kimi"],
         )
-        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_MOONSHOT_SAFE_TOKEN_QUOTA", "MOONSHOT_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        quota = parse_int(get_env_value(self._env_values, ["MOONSHOT_SAFE_TOKEN_QUOTA", "MOONSHOT_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="moonshot",
-            base_url=get_env_value(self._env_values, ["CAREER_AI_MOONSHOT_BASE_URL", "MOONSHOT_BASE_URL"], DEFAULT_BASE_URL),
-            model=get_env_value(self._env_values, ["CAREER_AI_MOONSHOT_MODEL", "MOONSHOT_MODEL"], DEFAULT_MODEL),
-            key_env_var="CAREER_AI_MOONSHOT_API_KEYS",
-            quota_env_var="CAREER_AI_MOONSHOT_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["MOONSHOT_BASE_URL", "MOONSHOT_BASE_URL"], DEFAULT_BASE_URL),
+            model=resolve_chat_provider_model(
+                provider="moonshot",
+                values=self._env_values,
+                provider_specific_names=["MOONSHOT_MODEL", "MOONSHOT_MODEL"],
+                default_model=DEFAULT_MODEL,
+            ),
+            key_env_var="MOONSHOT_API_KEYS",
+            quota_env_var="MOONSHOT_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -144,18 +160,23 @@ class APIManager:
         keys = collect_provider_keys(
             self._env_values,
             self._labeled_keys,
-            array_names=["CAREER_AI_OPENROUTER_API_KEYS", "OPENROUTER_KEYS"],
-            single_names=["CAREER_AI_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+            array_names=["OPENROUTER_API_KEYS", "OPENROUTER_KEYS"],
+            single_names=["OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
             label_keywords=["open router", "openrouter"],
         )
-        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_OPENROUTER_SAFE_TOKEN_QUOTA", "OPENROUTER_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        quota = parse_int(get_env_value(self._env_values, ["OPENROUTER_SAFE_TOKEN_QUOTA", "OPENROUTER_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="openrouter",
-            base_url=get_env_value(self._env_values, ["CAREER_AI_OPENROUTER_BASE_URL", "OPENROUTER_BASE_URL"], DEFAULT_OPENROUTER_BASE_URL),
-            model=get_env_value(self._env_values, ["CAREER_AI_OPENROUTER_MODEL", "OPENROUTER_MODEL"], DEFAULT_OPENROUTER_MODEL),
-            key_env_var="CAREER_AI_OPENROUTER_API_KEYS",
-            quota_env_var="CAREER_AI_OPENROUTER_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["OPENROUTER_BASE_URL", "OPENROUTER_BASE_URL"], DEFAULT_OPENROUTER_BASE_URL),
+            model=resolve_chat_provider_model(
+                provider="openrouter",
+                values=self._env_values,
+                provider_specific_names=["OPENROUTER_MODEL", "OPENROUTER_MODEL"],
+                default_model=DEFAULT_OPENROUTER_MODEL,
+            ),
+            key_env_var="OPENROUTER_API_KEYS",
+            quota_env_var="OPENROUTER_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -164,18 +185,23 @@ class APIManager:
         keys = collect_provider_keys(
             self._env_values,
             self._labeled_keys,
-            array_names=["CAREER_AI_FIREWORKS_API_KEYS", "FIREWORKS_API_KEYS"],
-            single_names=["CAREER_AI_FIREWORKS_API_KEY", "FIREWORKS_API_KEY"],
+            array_names=["FIREWORKS_API_KEYS", "FIREWORKS_API_KEYS"],
+            single_names=["FIREWORKS_API_KEY", "FIREWORKS_API_KEY"],
             label_keywords=["fireworks"],
         )
-        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_FIREWORKS_SAFE_TOKEN_QUOTA", "FIREWORKS_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        quota = parse_int(get_env_value(self._env_values, ["FIREWORKS_SAFE_TOKEN_QUOTA", "FIREWORKS_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="fireworks",
-            base_url=get_env_value(self._env_values, ["CAREER_AI_FIREWORKS_BASE_URL", "FIREWORKS_BASE_URL"], DEFAULT_FIREWORKS_BASE_URL),
-            model=get_env_value(self._env_values, ["CAREER_AI_FIREWORKS_MODEL", "FIREWORKS_MODEL"], DEFAULT_FIREWORKS_MODEL),
-            key_env_var="CAREER_AI_FIREWORKS_API_KEYS",
-            quota_env_var="CAREER_AI_FIREWORKS_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["FIREWORKS_BASE_URL", "FIREWORKS_BASE_URL"], DEFAULT_FIREWORKS_BASE_URL),
+            model=resolve_chat_provider_model(
+                provider="fireworks",
+                values=self._env_values,
+                provider_specific_names=["FIREWORKS_MODEL", "FIREWORKS_MODEL"],
+                default_model=DEFAULT_FIREWORKS_MODEL,
+            ),
+            key_env_var="FIREWORKS_API_KEYS",
+            quota_env_var="FIREWORKS_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -184,18 +210,23 @@ class APIManager:
         keys = collect_provider_keys(
             self._env_values,
             self._labeled_keys,
-            array_names=["CAREER_AI_NVIDIA_NIM_API_KEYS", "NVIDIA_NIM_API_KEYS"],
-            single_names=["CAREER_AI_NVIDIA_NIM_API_KEY", "NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY"],
+            array_names=["NVIDIA_NIM_API_KEYS", "NVIDIA_NIM_API_KEYS"],
+            single_names=["NVIDIA_NIM_API_KEY", "NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY"],
             label_keywords=["nvidia", "nim"],
         )
-        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_NVIDIA_NIM_SAFE_TOKEN_QUOTA", "NVIDIA_NIM_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        quota = parse_int(get_env_value(self._env_values, ["NVIDIA_NIM_SAFE_TOKEN_QUOTA", "NVIDIA_NIM_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="nvidia",
-            base_url=get_env_value(self._env_values, ["CAREER_AI_NVIDIA_NIM_BASE_URL", "NVIDIA_NIM_BASE_URL"], DEFAULT_NVIDIA_BASE_URL),
-            model=get_env_value(self._env_values, ["CAREER_AI_NVIDIA_NIM_MODEL", "NVIDIA_NIM_MODEL"], DEFAULT_NVIDIA_MODEL),
-            key_env_var="CAREER_AI_NVIDIA_NIM_API_KEYS",
-            quota_env_var="CAREER_AI_NVIDIA_NIM_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["NVIDIA_NIM_BASE_URL", "NVIDIA_NIM_BASE_URL"], DEFAULT_NVIDIA_BASE_URL),
+            model=resolve_chat_provider_model(
+                provider="nvidia",
+                values=self._env_values,
+                provider_specific_names=["NVIDIA_NIM_MODEL", "NVIDIA_NIM_MODEL"],
+                default_model=DEFAULT_NVIDIA_MODEL,
+            ),
+            key_env_var="NVIDIA_NIM_API_KEYS",
+            quota_env_var="NVIDIA_NIM_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -204,24 +235,29 @@ class APIManager:
         keys = collect_provider_keys(
             self._env_values,
             self._labeled_keys,
-            array_names=["CAREER_AI_CLOUDFLARE_WORKERS_API_KEYS", "CLOUDFLARE_WORKERS_API_KEYS"],
-            single_names=["CAREER_AI_CLOUDFLARE_WORKERS_API_KEY", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_KEY"],
+            array_names=["CLOUDFLARE_WORKERS_API_KEYS", "CLOUDFLARE_WORKERS_API_KEYS"],
+            single_names=["CLOUDFLARE_WORKERS_API_KEY", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_KEY"],
             label_keywords=["worker ai", "workers ai", "cloudflare"],
         )
-        account_id = get_env_value(self._env_values, ["CAREER_AI_CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"], "")
+        account_id = get_env_value(self._env_values, ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"], "")
         base_url = get_env_value(
             self._env_values,
-            ["CAREER_AI_CLOUDFLARE_WORKERS_BASE_URL", "CLOUDFLARE_WORKERS_BASE_URL"],
+            ["CLOUDFLARE_WORKERS_BASE_URL", "CLOUDFLARE_WORKERS_BASE_URL"],
             f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1" if account_id else "",
         )
-        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA", "CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        quota = parse_int(get_env_value(self._env_values, ["CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA", "CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys if base_url]
         return ProviderConfig(
             provider="cloudflare",
             base_url=base_url,
-            model=get_env_value(self._env_values, ["CAREER_AI_CLOUDFLARE_WORKERS_MODEL", "CLOUDFLARE_WORKERS_MODEL"], DEFAULT_CLOUDFLARE_MODEL),
-            key_env_var="CAREER_AI_CLOUDFLARE_WORKERS_API_KEYS",
-            quota_env_var="CAREER_AI_CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA",
+            model=resolve_chat_provider_model(
+                provider="cloudflare",
+                values=self._env_values,
+                provider_specific_names=["CLOUDFLARE_WORKERS_MODEL", "CLOUDFLARE_WORKERS_MODEL"],
+                default_model=DEFAULT_CLOUDFLARE_MODEL,
+            ),
+            key_env_var="CLOUDFLARE_WORKERS_API_KEYS",
+            quota_env_var="CLOUDFLARE_WORKERS_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -230,18 +266,18 @@ class APIManager:
         keys = collect_provider_keys(
             self._env_values,
             self._labeled_keys,
-            array_names=["CAREER_AI_OPENAI_API_KEYS", "OPENAI_KEYS"],
-            single_names=["CAREER_AI_OPENAI_API_KEY", "OPENAI_API_KEY"],
+            array_names=["OPENAI_API_KEYS", "OPENAI_KEYS"],
+            single_names=["OPENAI_API_KEY", "OPENAI_API_KEY"],
             label_keywords=["openai", "open ai"],
         )
-        quota = parse_int(get_env_value(self._env_values, ["CAREER_AI_OPENAI_SAFE_TOKEN_QUOTA", "OPENAI_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
+        quota = parse_int(get_env_value(self._env_values, ["OPENAI_SAFE_TOKEN_QUOTA", "OPENAI_SAFE_TOKEN_QUOTA"]), DEFAULT_SAFE_TOKEN_QUOTA)
         states = [APIKeyState(key=key, safe_quota_tokens=quota) for key in keys]
         return ProviderConfig(
             provider="openai",
-            base_url=get_env_value(self._env_values, ["CAREER_AI_OPENAI_BASE_URL", "OPENAI_BASE_URL"], DEFAULT_OPENAI_BASE_URL),
-            model=get_env_value(self._env_values, ["CAREER_AI_OPENAI_TRANSCRIPTION_MODEL", "OPENAI_TRANSCRIPTION_MODEL"], DEFAULT_TRANSCRIPTION_MODEL),
-            key_env_var="CAREER_AI_OPENAI_API_KEYS",
-            quota_env_var="CAREER_AI_OPENAI_SAFE_TOKEN_QUOTA",
+            base_url=get_env_value(self._env_values, ["OPENAI_BASE_URL", "OPENAI_BASE_URL"], DEFAULT_OPENAI_BASE_URL),
+            model=get_env_value(self._env_values, ["OPENAI_TRANSCRIPTION_MODEL", "OPENAI_TRANSCRIPTION_MODEL"], DEFAULT_TRANSCRIPTION_MODEL),
+            key_env_var="OPENAI_API_KEYS",
+            quota_env_var="OPENAI_SAFE_TOKEN_QUOTA",
             keys=states,
         )
 
@@ -344,6 +380,9 @@ class APIManager:
     def configuration_warnings(self) -> list[str]:
         """Return non-secret configuration issues detected in the local environment."""
         warnings: list[str] = []
+        configured_family = get_env_value(self._env_values, CHATBOT_MODEL_FAMILY_VARIABLES, "")
+        if configured_family and not normalize_chat_model_family(configured_family) in CHATBOT_MODEL_FAMILY_MAP:
+            warnings.append(f"Chatbot model family `{configured_family}` is not recognized by the provider mapping.")
         has_worker_labels = any("worker ai" in item.label or "workers ai" in item.label or "cloudflare" in item.label for item in self._labeled_keys)
         cloudflare_config = self._provider_configs.get("cloudflare")
         if has_worker_labels and (cloudflare_config is None or not cloudflare_config.keys):
@@ -648,6 +687,33 @@ def dedupe_keys(keys: Sequence[str]) -> list[str]:
             seen.add(cleaned)
             output.append(cleaned)
     return output
+
+
+def resolve_chat_provider_model(
+    provider: str,
+    values: Mapping[str, str],
+    provider_specific_names: Sequence[str],
+    default_model: str,
+) -> str:
+    """Resolve a provider model from specific overrides or a shared chatbot model family."""
+    provider_override = get_env_value(values, provider_specific_names, "")
+    if provider_override:
+        return provider_override
+    family = get_env_value(values, CHATBOT_MODEL_FAMILY_VARIABLES, "")
+    normalized_family = normalize_chat_model_family(family)
+    mapped_models = CHATBOT_MODEL_FAMILY_MAP.get(normalized_family, {})
+    return mapped_models.get(provider, default_model)
+
+
+def normalize_chat_model_family(value: str) -> str:
+    """Normalize a shared chatbot model family string for provider mapping."""
+    lowered = value.strip().lower()
+    if not lowered:
+        return ""
+    normalized = re.sub(r"[^a-z0-9.]+", "-", lowered).strip("-")
+    if normalized in {"moonshotai-kimi-k2.6", "kimi-k2p6", "kimi-k2-6"}:
+        return "kimi-k2.6"
+    return normalized
 
 
 def parse_int(raw_value: Optional[str], default: int) -> int:

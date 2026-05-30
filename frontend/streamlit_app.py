@@ -421,8 +421,13 @@ def render_resume_tab() -> None:
                 st.success("All substantial bullets include metric evidence.")
             if st.button("Generate role-specific summaries", width="stretch"):
                 manager = maybe_api_manager()
-                summaries = generate_resume_summaries(parsed_doc.text, st.session_state.get("target_role", target_role), manager)
-                st.session_state["resume_summaries"] = summaries
+                try:
+                    summaries = generate_resume_summaries(parsed_doc.text, st.session_state.get("target_role", target_role), manager)
+                    st.session_state["resume_summaries"] = summaries
+                except APIKeyPoolExhaustedError:
+                    st.error("Please try again tomorrow as you have reached your limit.")
+                except Exception as exc:
+                    st.error(f"Failed to generate summaries: {exc}")
             for summary in st.session_state.get("resume_summaries", []):
                 st.write(summary)
         else:
@@ -466,6 +471,8 @@ def render_interview_chat_tab() -> None:
                 else:
                     try:
                         st.session_state["audio_transcript"] = manager.audio_transcription(audio.getvalue(), "interview.wav")
+                    except APIKeyPoolExhaustedError:
+                        st.error("Please try again tomorrow as you have reached your limit.")
                     except Exception as exc:
                         st.error(f"Audio transcription failed: {exc}")
             if st.session_state.get("audio_transcript"):
@@ -502,8 +509,8 @@ def render_interview_chat_tab() -> None:
                     try:
                         chatbot = KimiRAGChatbot(api_manager=APIManager(), rag_engine=get_rag_engine())
                         answer = chatbot.answer(user_text or "Review the uploaded resume.", st.session_state["messages"], resume_context)
-                    except APIKeyPoolExhaustedError as exc:
-                        answer = f"API keys are unavailable or exhausted: {exc}"
+                    except APIKeyPoolExhaustedError:
+                        answer = "Please try again tomorrow as you have reached your limit."
                     except Exception as exc:
                         answer = f"Chatbot request failed: {exc}"
                     st.session_state["messages"].append({"role": "assistant", "content": answer})

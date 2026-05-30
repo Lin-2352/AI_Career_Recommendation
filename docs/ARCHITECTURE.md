@@ -27,7 +27,7 @@ The system is a local-first Streamlit application with a Python backend. It comb
 
 ## API Firewall
 
-`backend/core/api_manager.py` loads key pools from `.env`, supports professional JSON arrays such as `CAREER_AI_OPENROUTER_API_KEYS=["key1","key2"]`, supports legacy variable names, and supports local label-style lines such as `open router key 1: <secret>`.
+`backend/core/api_manager.py` loads key pools from `.env`, supports professional JSON arrays such as `OPENROUTER_API_KEYS=["key1","key2"]`, supports legacy variable names, and supports local label-style lines such as `open router key 1: <secret>`.
 
 - `threading.Lock()` around key state changes.
 - Token estimates using `tiktoken` with a deterministic fallback if tokenizer initialization stalls.

@@ -8,6 +8,8 @@ GUIDANCE_FILE = "career_guidance.csv"
 RECOMMENDATION_FILE = "career_recommendation.csv"
 CS_STUDENT_FILE = "computer_science_student_career_datasetMar62024.csv"
 STUDENT_SCORES_FILE = "student_scores_sanitized.csv"
+STUDENT_SCORES_6K_FILE = "student-scores-6k.csv"
+STUDENT_PLACEMENT_FILE = "student_placement_salary_elite_v2.csv"
 
 GUIDANCE_COLUMNS = {
     "Age",
@@ -76,6 +78,11 @@ STUDENT_SCORE_COLUMNS = {
     "biology_score",
     "english_score",
     "geography_score",
+}
+
+STUDENT_PLACEMENT_COLUMNS = {
+    "cgpa", "branch", "python_skill", "dsa_skill", "ml_skill",
+    "web_dev_skill", "coding_score", "communication_score", "internships", "projects", "job_role"
 }
 
 LANGUAGE_COLUMNS = ["Python", "Java", "C++", "JavaScript", "C#", "PHP", "Ruby", "Swift", "Go", "Rust", "Others"]
@@ -220,11 +227,29 @@ def load_raw_datasets(raw_dir: Path = RAW_DATA_DIR, include_experimental: bool =
         validate_columns(cs_students, CS_STUDENT_COLUMNS, CS_STUDENT_FILE)
         datasets[CS_STUDENT_FILE] = cs_students
 
+    score_dfs = []
     student_scores_path = raw_dir / STUDENT_SCORES_FILE
     if student_scores_path.exists():
-        student_scores = pd.read_csv(student_scores_path)
-        validate_columns(student_scores, STUDENT_SCORE_COLUMNS, STUDENT_SCORES_FILE)
-        datasets[STUDENT_SCORES_FILE] = student_scores
+        df = pd.read_csv(student_scores_path)
+        validate_columns(df, STUDENT_SCORE_COLUMNS, STUDENT_SCORES_FILE)
+        score_dfs.append(df)
+
+    student_scores_6k_path = raw_dir / STUDENT_SCORES_6K_FILE
+    if include_experimental and student_scores_6k_path.exists():
+        df = pd.read_csv(student_scores_6k_path)
+        validate_columns(df, STUDENT_SCORE_COLUMNS, STUDENT_SCORES_6K_FILE)
+        score_dfs.append(df)
+
+    if score_dfs:
+        datasets[STUDENT_SCORES_FILE] = pd.concat(score_dfs, ignore_index=True)
+
+    placement_path = raw_dir / STUDENT_PLACEMENT_FILE
+    if include_experimental and placement_path.exists():
+        df = pd.read_csv(placement_path)
+        validate_columns(df, STUDENT_PLACEMENT_COLUMNS, STUDENT_PLACEMENT_FILE)
+        # Only keep rows where job_role is meaningful
+        df = df.dropna(subset=["job_role"])
+        datasets[STUDENT_PLACEMENT_FILE] = df
 
     return datasets
 
@@ -346,6 +371,38 @@ def prepare_student_scores_dataset(dataframe: pd.DataFrame) -> pd.DataFrame:
     return output
 
 
+def prepare_student_placement_dataset(dataframe: pd.DataFrame) -> pd.DataFrame:
+    output = pd.DataFrame()
+    output["age"] = pd.Series(pd.NA, index=dataframe.index, dtype="Int64")
+    output["source"] = "student_placement"
+    output["age_band"] = "Graduate profile"
+
+    branch = clean_series(dataframe["branch"]).map(lambda b: f"{b} engineering")
+    cgpa = dataframe["cgpa"].astype(str).map(lambda v: f"CGPA {v}")
+    output["education_level"] = join_text_columns([branch, cgpa])
+
+    tech_skills = []
+    for skill in ["python", "dsa", "ml", "web_dev"]:
+        col = dataframe[f"{skill}_skill"]
+        mapped = col.map(lambda v: f"Strong {skill}" if pd.to_numeric(v, errors="coerce") >= 0.8 else ("Basic " + skill if pd.to_numeric(v, errors="coerce") >= 0.5 else ""))
+        tech_skills.append(mapped)
+
+    coding = dataframe["coding_score"].astype(str).map(lambda v: f"Coding Score {v}")
+
+    output["technical_skills"] = join_text_columns(tech_skills + [coding])
+
+    comm = dataframe["communication_score"].astype(str).map(lambda v: f"Communication Score {v}")
+    internships = dataframe["internships"].astype(str).map(lambda v: f"{v} Internships")
+    projects = dataframe["projects"].astype(str).map(lambda v: f"{v} Projects")
+    output["professional_interests"] = join_text_columns([comm, internships, projects])
+
+    output["target_career"] = clean_series(dataframe["job_role"])
+    output["profile_text"] = join_text_columns(
+        [output["age_band"], output["education_level"], output["technical_skills"], output["professional_interests"]]
+    )
+    return output
+
+
 def prepare_master_dataset(datasets: dict[str, pd.DataFrame]) -> pd.DataFrame:
     frames = [
         prepare_guidance_dataset(datasets[GUIDANCE_FILE]),
@@ -355,6 +412,8 @@ def prepare_master_dataset(datasets: dict[str, pd.DataFrame]) -> pd.DataFrame:
         frames.append(prepare_computer_science_dataset(datasets[CS_STUDENT_FILE]))
     if STUDENT_SCORES_FILE in datasets:
         frames.append(prepare_student_scores_dataset(datasets[STUDENT_SCORES_FILE]))
+    if STUDENT_PLACEMENT_FILE in datasets:
+        frames.append(prepare_student_placement_dataset(datasets[STUDENT_PLACEMENT_FILE]))
 
     master = pd.concat(frames, ignore_index=True)
     required = ["education_level", "technical_skills", "professional_interests", "target_career", "profile_text"]
@@ -367,7 +426,7 @@ def prepare_master_dataset(datasets: dict[str, pd.DataFrame]) -> pd.DataFrame:
 def build_master_dataset(
     raw_dir: Path = RAW_DATA_DIR,
     output_path: Path = MASTER_DATA_PATH,
-    include_experimental: bool = False,
+    include_experimental: bool = True,
 ) -> pd.DataFrame:
     datasets = load_raw_datasets(raw_dir, include_experimental=include_experimental)
     master = prepare_master_dataset(datasets)
