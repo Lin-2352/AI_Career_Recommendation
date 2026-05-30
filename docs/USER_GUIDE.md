@@ -23,7 +23,9 @@ Required fields are marked with a red star. Optional profile fields can improve 
 
 ## Interpreting Confidence
 
-Fit score is the top recommendation's share among the displayed ranked matches. Model probability is the classifier's raw probability for that career label. Both values are useful for comparison, but neither is a guarantee of job fit, hiring success, or academic placement.
+Fit score is the top recommendation's share among the displayed ranked matches after combining model probability with profile alignment. Model probability is the classifier's raw probability for that career label. Both values are useful for comparison, but neither is a guarantee of job fit, hiring success, or academic placement.
+
+Weak or unfamiliar inputs may still produce a ranked list, but the app labels those cases as exploratory when the profile has low alignment with known career skill patterns.
 
 ## Retraining
 

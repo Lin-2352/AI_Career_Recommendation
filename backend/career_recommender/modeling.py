@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
-from career_recommender import __version__
-from career_recommender.paths import METRICS_PATH, MODEL_ARTIFACT_PATH
+from backend.career_recommender import __version__
+from backend.career_recommender.paths import METRICS_PATH, MODEL_ARTIFACT_PATH
 
 
 def build_estimator() -> Pipeline:

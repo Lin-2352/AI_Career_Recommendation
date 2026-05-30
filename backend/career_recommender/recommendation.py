@@ -1,4 +1,6 @@
-from career_recommender.data_pipeline import age_band
+import re
+
+from backend.career_recommender.data_pipeline import age_band
 
 EDUCATION_OPTIONS = [
     "Secondary school",
@@ -59,8 +61,9 @@ INTEREST_STARTERS = [
 
 CAREER_SKILL_MAP = {
     "Data Scientist": ["Python", "SQL", "Statistics", "Machine Learning", "Model Evaluation"],
+    "Data Engineer": ["SQL", "Python", "Data Pipelines", "Databases", "Cloud Computing"],
     "Data Analyst": ["SQL", "Excel", "Python", "Dashboarding", "Business Metrics"],
-    "Machine Learning Engineer": ["Python", "Scikit-learn", "Model Deployment", "MLOps", "Cloud Computing"],
+    "Machine Learning Engineer": ["Python", "Machine Learning", "Model Deployment", "MLOps", "Cloud Computing"],
     "Artificial Intelligence Engineer": ["Python", "Machine Learning", "Deep Learning", "MLOps", "AI System Design"],
     "AI Researcher": ["Python", "Deep Learning", "Research Methods", "Mathematics", "Experiment Design"],
     "AI Specialist": ["Python", "Prompt Engineering", "Machine Learning", "AI Product Evaluation", "Data Ethics"],
@@ -162,8 +165,28 @@ SIGNAL_KEYWORDS = [
     "Writing",
     "Teaching",
     "Game",
-    "Cloud",
 ]
+
+BROAD_CAREER_LABELS = {"Tech", "Business", "Finance", "Design", "Healthcare"}
+GENERIC_TITLE_WORDS = {
+    "and",
+    "engineer",
+    "developer",
+    "analyst",
+    "specialist",
+    "manager",
+    "officer",
+    "administrator",
+    "professional",
+}
+TOKEN_ALIASES = {
+    "financial": {"finance", "financial"},
+    "finance": {"finance", "financial"},
+    "ai": {"ai", "artificial", "intelligence"},
+    "ux": {"ux", "user", "experience"},
+    "frontend": {"front", "frontend"},
+    "backend": {"back", "backend"},
+}
 
 
 def profile_from_inputs(age: int, education: str, skills: str, interests: str, extra_context: str = "") -> str:
@@ -173,6 +196,75 @@ def profile_from_inputs(age: int, education: str, skills: str, interests: str, e
 
 def normalize_blob(value: str) -> str:
     return value.lower().replace("-", " ").replace("_", " ")
+
+
+def tokens_from_text(value: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9+#]+", normalize_blob(value)))
+
+
+def token_present(token: str, tokens: set[str]) -> bool:
+    aliases = TOKEN_ALIASES.get(token, {token})
+    return bool(tokens.intersection(aliases))
+
+
+def phrase_present(phrase: str, blob: str, tokens: set[str]) -> bool:
+    normalized = normalize_blob(phrase)
+    words = [word for word in tokens_from_text(normalized) if len(word) > 1]
+    if normalized in blob:
+        return True
+    return bool(words) and all(token_present(word, tokens) for word in words)
+
+
+def career_alignment_score(career: str, profile_text: str) -> float:
+    blob = normalize_blob(profile_text)
+    tokens = tokens_from_text(profile_text)
+    catalog = CAREER_SKILL_MAP.get(career, [])
+    catalog_score = 0.0
+    if catalog:
+        matches = sum(1 for skill in catalog if phrase_present(skill, blob, tokens))
+        catalog_score = matches / len(catalog)
+    title_words = [
+        word
+        for word in tokens_from_text(career)
+        if len(word) > 2 and word not in GENERIC_TITLE_WORDS
+    ]
+    title_score = 0.0
+    if title_words:
+        title_score = sum(1 for word in title_words if token_present(word, tokens)) / len(title_words)
+    return max(catalog_score, title_score * 0.35)
+
+
+def rank_profile_recommendations(
+    artifact: dict,
+    profile_text: str,
+    skills: str,
+    interests: str,
+    extra_context: str = "",
+    top_n: int = 5,
+) -> list[dict]:
+    if top_n <= 0:
+        return []
+    model = artifact["model"]
+    probabilities = model.predict_proba([profile_text])[0]
+    classes = model.named_steps["classifier"].classes_
+    alignment_text = " ".join([profile_text, skills, interests, extra_context])
+    ranked = []
+    for career, probability in zip(classes, probabilities, strict=True):
+        career_name = str(career)
+        model_probability = float(probability)
+        alignment = career_alignment_score(career_name, alignment_text)
+        fit_score = (model_probability * 0.68) + (alignment * 0.32)
+        if career_name in BROAD_CAREER_LABELS:
+            fit_score *= 0.88
+        ranked.append(
+            {
+                "career": career_name,
+                "confidence": model_probability,
+                "profile_alignment": alignment,
+                "fit_score": fit_score,
+            }
+        )
+    return sorted(ranked, key=lambda item: item["fit_score"], reverse=True)[:top_n]
 
 
 def skill_suggestions(career: str, current_skills: str, limit: int = 5) -> list[str]:
@@ -186,5 +278,8 @@ def skill_suggestions(career: str, current_skills: str, limit: int = 5) -> list[
 
 def extract_profile_signals(skills: str, interests: str, limit: int = 8) -> list[str]:
     blob = normalize_blob(f"{skills} {interests}")
-    signals = [keyword for keyword in SIGNAL_KEYWORDS if normalize_blob(keyword) in blob]
+    signals = []
+    for keyword in SIGNAL_KEYWORDS:
+        if normalize_blob(keyword) in blob and keyword not in signals:
+            signals.append(keyword)
     return signals[:limit]

@@ -5,9 +5,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from career_recommender.data_pipeline import build_master_dataset
-from career_recommender.modeling import save_training_outputs, train_career_model
-from career_recommender.paths import METRICS_PATH, MODEL_ARTIFACT_PATH
+from backend.career_recommender.data_pipeline import build_master_dataset
+from backend.career_recommender.modeling import save_training_outputs, train_career_model
+from backend.career_recommender.paths import METRICS_PATH, MODEL_ARTIFACT_PATH
 
 
 def main() -> None:

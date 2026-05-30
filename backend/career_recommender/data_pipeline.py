@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from career_recommender.paths import MASTER_DATA_PATH, RAW_DATA_DIR
+from backend.career_recommender.paths import MASTER_DATA_PATH, RAW_DATA_DIR
 
 GUIDANCE_FILE = "career_guidance.csv"
 RECOMMENDATION_FILE = "career_recommendation.csv"

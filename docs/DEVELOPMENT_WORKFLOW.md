@@ -47,6 +47,7 @@ Use these commands before pushing:
 
 ```powershell
 python scripts/02_train_model.py
-python -m compileall app.py career_recommender scripts
+python -m compileall app.py backend frontend scripts tests
+python -m unittest discover -s tests -v
 streamlit run app.py
 ```
