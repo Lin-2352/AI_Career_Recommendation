@@ -13,14 +13,14 @@ from frontend.ui_helpers import confidence_band
 
 class RecommendationBehaviorTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.artifact = load_artifact()
 
-    def ranked(self, age, education, skills, interests, extra_context=""):
+    def ranked(self, age: int, education: str, skills: str, interests: str, extra_context: str = "") -> list[dict]:
         profile = profile_from_inputs(age, education, skills, interests, extra_context)
         return rank_profile_recommendations(self.artifact, profile, skills, interests, extra_context, top_n=5)
 
-    def test_prediction_values_are_well_formed(self):
+    def test_prediction_values_are_well_formed(self) -> None:
         results = self.ranked(24, "Bachelor's", "Python, SQL, machine learning", "AI, data science", "Technical")
         self.assertEqual(len(results), 5)
         for item in results:
@@ -29,7 +29,7 @@ class RecommendationBehaviorTests(unittest.TestCase):
             self.assertTrue(0 <= item["profile_alignment"] <= 1)
             self.assertTrue(math.isfinite(item["fit_score"]))
 
-    def test_machine_learning_profile_ranks_data_roles_first(self):
+    def test_machine_learning_profile_ranks_data_roles_first(self) -> None:
         results = self.ranked(
             24,
             "Bachelor's",
@@ -40,7 +40,7 @@ class RecommendationBehaviorTests(unittest.TestCase):
         top_three = {item["career"] for item in results[:3]}
         self.assertTrue({"Data Scientist", "Machine Learning Engineer"}.intersection(top_three))
 
-    def test_finance_profile_prefers_financial_analyst(self):
+    def test_finance_profile_prefers_financial_analyst(self) -> None:
         results = self.ranked(
             22,
             "Bachelor's",
@@ -50,7 +50,7 @@ class RecommendationBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(results[0]["career"], "Financial Analyst")
 
-    def test_design_profile_prefers_ux_designer(self):
+    def test_design_profile_prefers_ux_designer(self) -> None:
         results = self.ranked(
             21,
             "Design",
@@ -60,7 +60,7 @@ class RecommendationBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(results[0]["career"], "UX Designer")
 
-    def test_healthcare_profile_prefers_doctor(self):
+    def test_healthcare_profile_prefers_doctor(self) -> None:
         results = self.ranked(
             18,
             "Secondary school",
@@ -70,18 +70,18 @@ class RecommendationBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(results[0]["career"], "Doctor")
 
-    def test_unknown_profile_is_not_overstated(self):
+    def test_unknown_profile_is_not_overstated(self) -> None:
         results = self.ranked(30, "Diploma", "asdf qwer zzzz", "lorem ipsum unknown")
         best = results[0]
         displayed_total = sum(item["fit_score"] for item in results) or 1
         fit_share = best["fit_score"] / displayed_total
         self.assertEqual(confidence_band(fit_share, best["confidence"], best["profile_alignment"]), "Exploratory match")
 
-    def test_signal_extraction_is_deduplicated(self):
+    def test_signal_extraction_is_deduplicated(self) -> None:
         signals = extract_profile_signals("Cloud, cloud computing, Python", "Cloud infrastructure and AI")
         self.assertEqual(len(signals), len(set(signals)))
 
-    def test_alignment_handles_known_and_unknown_careers(self):
+    def test_alignment_handles_known_and_unknown_careers(self) -> None:
         self.assertGreater(career_alignment_score("Data Scientist", "Python SQL statistics machine learning"), 0)
         self.assertEqual(career_alignment_score("Unknown Career", "Python SQL"), 0)
 

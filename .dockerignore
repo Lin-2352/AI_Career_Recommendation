@@ -3,20 +3,18 @@ career_env/
 venv/
 env/
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.ipynb_checkpoints/
 .idea/
 .vscode/
+.git/
 .env
 .env.*
 !.env.example
-.streamlit/secrets.toml
-.kaggle/
-kaggle.json
+logs/
+reports/tmp/
 data/processed/
 data/interim/
 data/external/
@@ -24,10 +22,4 @@ data/raw/*.csv
 !data/raw/career_guidance.csv
 !data/raw/career_recommendation.csv
 !data/raw/student_scores_sanitized.csv
-data/raw/computer_science_student_career_datasetMar62024.csv
-data/raw/student-scores-6k.csv
-data/raw/Job Datsset.csv
-reports/tmp/
 *.log
-.DS_Store
-Thumbs.db

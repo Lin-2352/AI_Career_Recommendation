@@ -2,46 +2,44 @@
 
 ## Overview
 
-The system is a local-first machine learning application with a Streamlit user interface. It prepares career profile data from active CSV datasets, trains a text classification model, stores a deployable artifact, and serves ranked recommendations from the saved model.
+The system is a local-first Streamlit application with a Python backend. It combines deterministic analytics, a trained career classifier, document parsing, dataset-grounded retrieval, and optional OpenAI-compatible LLM calls behind a quota-protecting API manager.
 
 ## Layers
 
 | Layer | Files | Responsibility |
 | --- | --- | --- |
-| Raw data | `data/raw/` | Stores active source CSV datasets used for training. |
-| Data preparation | `backend/career_recommender/data_pipeline.py`, `scripts/01_prepare_data.py` | Validates source columns, aligns schemas, normalizes profile fields, and creates the master training table. |
-| Model training | `backend/career_recommender/modeling.py`, `scripts/02_train_model.py` | Builds the TF-IDF and Multinomial Naive Bayes pipeline, evaluates holdout performance, and writes artifacts. |
-| Inference helpers | `backend/career_recommender/recommendation.py` | Builds profile text, applies model probabilities, reranks matches with profile alignment, and generates skill suggestions. |
-| User interface | `frontend/streamlit_app.py`, `frontend/ui_helpers.py`, `app.py` | Captures profile inputs and displays ranked career matches, fit score, model probability, signals, and skill recommendations. |
-| Tests | `tests/` | Verifies data integrity, validation behavior, recommendation probes, confidence labeling, and Streamlit startup. |
-| Documentation | `README.md`, `docs/` | Explains setup, workflow, architecture, and user operation. |
+| Core services | `backend/core/` | API key pooling, token accounting, rotating logs, PDF/DOCX/TXT/image parsing. |
+| Career intelligence | `backend/career_recommender/` | Data preparation, model training, probabilistic ranking, student forecasting, pivot scoring, resume analysis, and interview preparation. |
+| Chatbot and RAG | `backend/chatbot/rag_engine.py` | Loads local CSV datasets, builds a vector index, retrieves context, and calls Kimi through the standard OpenAI client path. |
+| Frontend | `frontend/streamlit_app.py`, `frontend/assets/custom_style.css` | Five-tab user workspace, validation, session state, charts, uploads, chat, audio capture, and ATS export. |
+| Tests | `tests/` | Unit and smoke tests for API rotation, parsing, recommendation behavior, ATS math, STAR checks, and Streamlit boot. |
+| Deployment | `Dockerfile`, `docker-compose.yml`, `run_client.*` | Reproducible Streamlit container on port `8501`. |
 
 ## Data Flow
 
-1. `data/raw/career_guidance.csv`, `data/raw/career_recommendation.csv`, and `data/raw/student_scores_sanitized.csv` are loaded.
-2. Dataset-specific fields are mapped into a shared schema.
-3. Education, skills, interests, and age band are combined into `profile_text`.
-4. `profile_text` becomes the model input and `target_career` becomes the label.
-5. The trained pipeline is saved to `models/career_model.joblib`.
-6. Streamlit loads the artifact and ranks career matches using model probabilities plus profile-alignment scoring.
+1. Raw CSVs in `data/raw/` are validated and normalized by `data_pipeline.py`.
+2. Education, age band, skills, and interests become `profile_text`.
+3. `modeling.py` trains TF-IDF plus Multinomial Naive Bayes and stores the artifact.
+4. `recommendation.py` calls `predict_proba()`, reranks with profile alignment, and surfaces top matches.
+5. Resume uploads go through `document_parser.py` and `resume_analyzer.py`.
+6. Chat questions use `DatasetRAGEngine` to retrieve local dataset context before the Kimi request.
+7. All external AI calls use `APIManager`, which estimates tokens, rotates at 80 percent soft cap, and retires keys on quota or rate failures.
 
-## Model Design
+## API Firewall
 
-The model uses `TfidfVectorizer` for text features and `MultinomialNB` for classification. This pairing is effective for non-negative sparse text vectors and produces ranked class probabilities for the UI. The UI then reranks candidates with a profile-alignment score so explicit user skills can correct weak model-only ordering. Evaluation tracks top-1 accuracy plus top-3 and top-5 match rates because the product presents ranked recommendations.
+`backend/core/api_manager.py` loads key pools from `.env`, supports JSON arrays such as `MOONSHOT_KEYS=["key1","key2"]`, and protects providers with:
 
-## Frontend and Backend Split
+- `threading.Lock()` around key state changes.
+- Token estimates using `tiktoken` with a deterministic fallback if tokenizer initialization stalls.
+- 80 percent soft-cap rotation before a request is sent.
+- Error interception for quota and rate failures, including `402`, `429`, and `insufficient_quota`.
+- Critical logging when a key is retired or rotated.
+- Mocked tests that do not call live endpoints.
 
-`backend/` owns data, training, artifact paths, and recommendation logic. `frontend/` owns Streamlit rendering and UI validation helpers. The root `app.py` remains a thin deployment launcher so `streamlit run app.py` and Streamlit Community Cloud stay simple.
+## UI Architecture
 
-## Artifact Strategy
+The frontend is intentionally thin. It collects validated inputs, stores multi-step state in `st.session_state`, and delegates all scoring, parsing, ranking, and API work to backend modules. The root `app.py` remains a launcher so `streamlit run app.py` is stable across local and container environments.
 
-Generated model and metrics files are intentionally small and versioned:
+## Dataset Strategy
 
-- `models/career_model.joblib`
-- `reports/model_metrics.json`
-
-Generated processed CSV files are ignored because they can be rebuilt from the raw datasets.
-
-## Security and Repository Hygiene
-
-The repository ignores virtual environments, IDE folders, local secrets, Kaggle credentials, cache folders, temporary outputs, logs, and generated processed data. Streamlit secrets must be stored locally or in the hosting provider, not in Git.
+The three curated CSV files required for training are tracked. Additional downloaded raw datasets are local-only by default and can still be used by RAG because the engine scans `data/raw/*.csv` at runtime.

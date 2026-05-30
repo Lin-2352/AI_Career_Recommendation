@@ -1,19 +1,20 @@
 # AI Career Recommendation
 
-AI Career Recommendation is a Streamlit and scikit-learn application that recommends career paths from a user's education, skills, and interests. It combines career datasets, trains a TF-IDF and Multinomial Naive Bayes model, and serves ranked recommendations through a polished local web app.
+AI Career Recommendation is a local-first Streamlit SaaS-style application for career matching, student placement planning, professional pivot analysis, ATS resume optimization, interview preparation, and Kimi-powered dataset-grounded chat.
+
+The app uses a trained scikit-learn TF-IDF and Multinomial Naive Bayes model for career probabilities, deterministic analytics for ATS and interview checks, and an API firewall that rotates OpenAI-compatible keys before quota exhaustion.
 
 ## Features
 
-- Backend package for data preparation, modeling, ranking, and recommendation helpers.
-- Frontend package for the Streamlit interface and UI validation helpers.
-- TF-IDF text vectorization over education, skills, interests, and age band.
-- Multinomial Naive Bayes classifier with holdout evaluation.
-- Profile-aware reranking that blends model probability with explicit skill alignment.
-- Ranked top career matches with fit score, model probability, and profile alignment.
-- Top-3 and top-5 match-rate metrics for ranked recommendation quality.
-- Skill suggestions based on the highest-ranked career.
-- Automated tests for data integrity, validation, recommendation probes, and Streamlit startup.
-- Git-ready project hygiene with focused `.gitignore` rules.
+- Five-tab Streamlit workspace: Career Match, Student Hub, Pivot Dashboard, Resume ATS, and Interview & Chat.
+- Top-3 career recommendations from `predict_proba()` with model confidence, market-adjusted confidence, and profile alignment.
+- Skills gap analyzer showing skills already present and critical missing skills for the target role.
+- Student placement probability, salary tier forecasting, degree-to-occupation mapping, and study habit viability scoring.
+- Professional pivot scoring, flight-risk detection, and lateral transition mapping through cosine similarity.
+- PDF, DOCX, TXT, and image resume parsing with ATS keyword scoring, formatting checks, weak verb detection, impact-gap detection, summaries, and PDF resume export.
+- Interview question generation, STAR response scoring, filler-word analysis, recorded audio capture, and optional OpenAI transcription.
+- Kimi `kimi-k2.6` chatbot wired through the standard `openai` Python client and grounded in local raw datasets.
+- Thread-safe API key rotation with 80 percent soft caps, mocked tests, rotating logs, Docker, and Compose support.
 
 ## Project Structure
 
@@ -21,72 +22,48 @@ AI Career Recommendation is a Streamlit and scikit-learn application that recomm
 AI_Career_Recommendation/
 |-- app.py
 |-- backend/
+|   |-- chatbot/
+|   |   `-- rag_engine.py
+|   |-- core/
+|   |   |-- api_manager.py
+|   |   |-- document_parser.py
+|   |   `-- logger.py
 |   `-- career_recommender/
 |       |-- data_pipeline.py
+|       |-- interview_prep.py
 |       |-- modeling.py
 |       |-- paths.py
-|       `-- recommendation.py
+|       |-- recommendation.py
+|       `-- resume_analyzer.py
 |-- frontend/
+|   |-- assets/custom_style.css
 |   |-- streamlit_app.py
 |   `-- ui_helpers.py
-|-- data/
-|   `-- raw/
-|       |-- career_guidance.csv
-|       |-- career_recommendation.csv
-|       `-- student_scores_sanitized.csv
-|-- docs/
-|-- models/
-|-- reports/
-|-- scripts/
 |-- tests/
-|-- requirements.txt
-`-- .streamlit/
+|-- docs/
+|-- Dockerfile
+|-- docker-compose.yml
+|-- run_client.bat
+|-- run_client.sh
+`-- requirements.txt
 ```
 
 ## Setup
 
-Activate the existing environment:
-
 ```powershell
 .\career_env\Scripts\activate
-```
-
-Install dependencies:
-
-```powershell
 pip install -r requirements.txt
+copy .env.example .env
 ```
 
-## Prepare Data
+Set keys only when you want external AI features:
 
-The repository expects:
-
-- `data/raw/career_guidance.csv`
-- `data/raw/career_recommendation.csv`
-- `data/raw/student_scores_sanitized.csv`
-
-Build the processed training table:
-
-```powershell
-python scripts/01_prepare_data.py
+```text
+MOONSHOT_KEYS=["your_kimi_key"]
+OPENAI_KEYS=["your_openai_key_for_audio_transcription"]
 ```
 
-## Train the Model
-
-```powershell
-python scripts/02_train_model.py
-```
-
-Training writes:
-
-- `models/career_model.joblib`
-- `reports/model_metrics.json`
-
-## Test
-
-```powershell
-python -m unittest discover -s tests -v
-```
+The core app, model recommendations, ATS checks, and tests work without live API calls.
 
 ## Run Locally
 
@@ -94,7 +71,46 @@ python -m unittest discover -s tests -v
 streamlit run app.py
 ```
 
-Then open the URL shown by Streamlit, usually `http://localhost:8501`.
+Open the local Streamlit URL, usually `http://localhost:8501`.
+
+## Docker
+
+```powershell
+.\run_client.bat
+```
+
+Unix:
+
+```bash
+./run_client.sh
+```
+
+Both scripts check Docker, build the image, and run Compose on port `8501`.
+
+## Data And Training
+
+Tracked training inputs are:
+
+- `data/raw/career_guidance.csv`
+- `data/raw/career_recommendation.csv`
+- `data/raw/student_scores_sanitized.csv`
+
+Additional raw CSVs can be placed in `data/raw/` for local RAG and analysis, but new raw CSVs are ignored by Git by default to avoid committing large or sensitive datasets.
+
+```powershell
+python scripts/01_prepare_data.py
+python scripts/02_train_model.py
+```
+
+Training writes `models/career_model.joblib` and `reports/model_metrics.json`.
+
+## Test
+
+```powershell
+python -m pytest -q
+```
+
+The API suite uses mocked OpenAI-compatible clients and never triggers live endpoints.
 
 ## Documentation
 
@@ -103,21 +119,6 @@ Then open the URL shown by Streamlit, usually `http://localhost:8501`.
 - [Development Workflow](docs/DEVELOPMENT_WORKFLOW.md)
 - [Datasets](docs/DATASETS.md)
 
-## Git Workflow
+## Repository Hygiene
 
-The first stable release lives on `main`. Future work should be developed on named branches created from the current parent branch, then pushed separately before merging.
-
-Recommended branch examples:
-
-- `feature/model-comparison`
-- `feature/user-profile-export`
-- `fix/retraining-validation`
-- `docs/streamlit-deployment`
-
-## Security
-
-Do not commit virtual environments, IDE folders, `.env` files, Streamlit secrets, Kaggle credentials, logs, cache folders, or private user data. The `.gitignore` file excludes the original student-score file because it contains names and email addresses.
-
-## Limitations
-
-The recommendation is based on the available training labels and text features. It should be used as a career exploration aid, not as a final career decision or hiring assessment.
+The repository ignores virtual environments, `.env` files, Streamlit secrets, logs, caches, generated processed data, and newly downloaded raw CSVs. Keep private datasets and API keys local.

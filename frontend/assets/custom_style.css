@@ -1,0 +1,132 @@
+#MainMenu, footer, header {
+    display: none;
+}
+
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2.4rem;
+    max-width: 1320px;
+}
+
+h1, h2, h3, h4, p, span, label {
+    letter-spacing: 0;
+}
+
+.app-shell {
+    border-bottom: 1px solid #D8DEE9;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+}
+
+.eyebrow {
+    color: #0F766E;
+    font-size: 0.78rem;
+    font-weight: 760;
+    letter-spacing: 0.08rem;
+    text-transform: uppercase;
+}
+
+.headline {
+    color: #111827;
+    font-size: 2rem;
+    font-weight: 780;
+    line-height: 1.1;
+    margin-top: 0.2rem;
+}
+
+.subhead {
+    color: #4B5563;
+    font-size: 0.98rem;
+    max-width: 780px;
+}
+
+.field-label {
+    align-items: center;
+    color: #111827;
+    display: flex;
+    font-size: 0.9rem;
+    font-weight: 680;
+    gap: 0.35rem;
+    margin: 0.25rem 0 0.3rem;
+}
+
+.required-star {
+    color: #DC2626;
+    font-weight: 800;
+}
+
+.optional-pill {
+    border: 1px solid #CBD5E1;
+    border-radius: 999px;
+    color: #64748B;
+    font-size: 0.68rem;
+    font-weight: 680;
+    padding: 0.03rem 0.42rem;
+    text-transform: uppercase;
+}
+
+.result-panel {
+    background: #FFFFFF;
+    border: 1px solid #D8DEE9;
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+}
+
+.result-kicker {
+    color: #64748B;
+    font-size: 0.78rem;
+    font-weight: 760;
+    text-transform: uppercase;
+}
+
+.result-career {
+    color: #111827;
+    font-size: 1.55rem;
+    font-weight: 780;
+    line-height: 1.18;
+    margin-top: 0.25rem;
+}
+
+.chip {
+    border: 1px solid #CBD5E1;
+    border-radius: 999px;
+    display: inline-block;
+    font-size: 0.82rem;
+    font-weight: 620;
+    margin: 0.16rem;
+    padding: 0.22rem 0.58rem;
+}
+
+.chip-green {
+    background: #ECFDF5;
+    border-color: #86EFAC;
+    color: #166534;
+}
+
+.chip-red {
+    background: #FEF2F2;
+    border-color: #FCA5A5;
+    color: #991B1B;
+}
+
+.chip-neutral {
+    background: #F8FAFC;
+    color: #334155;
+}
+
+.small-note {
+    color: #64748B;
+    font-size: 0.84rem;
+}
+
+div[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+}
+
+.stButton > button, .stDownloadButton > button {
+    border-radius: 8px;
+    font-weight: 700;
+}

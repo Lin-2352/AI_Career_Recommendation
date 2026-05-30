@@ -1,48 +1,66 @@
 # User Guide
 
-## Running the App
-
-From the project root:
+## Running The App
 
 ```powershell
 .\career_env\Scripts\activate
 streamlit run app.py
 ```
 
-Open the local URL shown by Streamlit, usually `http://localhost:8501`.
-
-## Creating a Recommendation
-
-1. Choose your age.
-2. Select the closest education level or field.
-3. Add skill starters or type your own skills.
-4. Add interest starters or type your own interests.
-5. Select **Generate recommendation**.
-
-Required fields are marked with a red star. Optional profile fields can improve the match when they are relevant, but they are not required. The app returns the best career match, ranked alternatives, fit score, model probability, detected profile signals, and suggested skills to strengthen.
-
-## Interpreting Confidence
-
-Fit score is the top recommendation's share among the displayed ranked matches after combining model probability with profile alignment. Model probability is the classifier's raw probability for that career label. Both values are useful for comparison, but neither is a guarantee of job fit, hiring success, or academic placement.
-
-Weak or unfamiliar inputs may still produce a ranked list, but the app labels those cases as exploratory when the profile has low alignment with known career skill patterns.
-
-## Retraining
-
-After replacing or editing the raw CSV files, retrain the model:
+For Docker:
 
 ```powershell
-python scripts/02_train_model.py
+.\run_client.bat
 ```
 
-Then restart Streamlit so the new artifact is loaded.
+Open `http://localhost:8501`.
 
-## Expected Data Files
+## Career Match
 
-The training scripts expect:
+1. Enter age and education.
+2. Select hard skills, soft skills, and interests.
+3. Add market context with city development index and company size.
+4. Select **Generate top matches**.
 
-- `data/raw/career_guidance.csv`
-- `data/raw/career_recommendation.csv`
-- `data/raw/student_scores_sanitized.csv`
+The result shows the top three careers, raw model confidence, market-adjusted confidence, profile alignment, skills you already have, and critical missing skills.
 
-Training files should remain free of private user records. The original student-score file is sanitized before use and should not be committed.
+## Student Hub
+
+Use the placement forecaster with GPA, college tier, and competencies such as DSA, web development, SQL, and internship experience. The degree mapping section reads local raw datasets and plots where matching fields of study lead. The study habit tool estimates viability from weekly study hours, subject scores, and available baseline correlations.
+
+## Pivot Dashboard
+
+The flight-risk calculator estimates pivot urgency from satisfaction, work-life balance, and years of experience. The lateral transition table compares current skills against career skill maps and ranks adjacent moves by cosine similarity.
+
+## Resume ATS
+
+Upload PDF, DOCX, TXT, or supported image resumes. PDFs use `pdfplumber`, Word files use `python-docx`, text files are parsed locally, and image resumes require a configured Kimi key.
+
+The analyzer provides:
+
+- ATS match score using found keywords divided by total required keywords.
+- Keywords found and keyword gaps.
+- Formatting warnings.
+- Weak action verb suggestions.
+- Bullets missing measurable impact.
+- Optional role-specific summary generation.
+- ATS-friendly PDF resume export.
+
+## Interview And Chat
+
+Generate interview questions from the selected role and skills. Paste a STAR answer to check whether Situation, Task, Action, and Result are present and whether the Result includes a metric.
+
+The audio sandbox records a mock answer through Streamlit. OpenAI transcription is optional and requires `OPENAI_KEYS`; filler-word analysis can run on either API transcript text or pasted transcript text.
+
+The chatbot uses local dataset retrieval and Kimi when `MOONSHOT_KEYS` is configured. Resume files can be attached in the chat input flow.
+
+## Environment Keys
+
+Copy `.env.example` to `.env` and set only the providers you plan to use.
+
+```text
+MOONSHOT_KEYS=["your_kimi_key"]
+OPENAI_KEYS=["your_openai_key"]
+```
+
+Leave keys empty for offline model, student, pivot, ATS, and interview heuristic features.
