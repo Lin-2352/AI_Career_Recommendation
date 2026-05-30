@@ -20,6 +20,9 @@ kaggle.json
 data/processed/
 data/interim/
 data/external/
+data/raw/computer_science_student_career_datasetMar62024.csv
+data/raw/student-scores-6k.csv
+data/raw/Job Datsset.csv
 reports/tmp/
 *.log
 .DS_Store

@@ -35,6 +35,8 @@ git diff --stat
 
 Do not commit virtual environments, IDE folders, local secrets, Kaggle credentials, cache folders, logs, or large temporary outputs.
 
+Raw files containing names, emails, or other direct identifiers must be sanitized before they are used in committed training data.
+
 ## Code Style
 
 Production code should be readable through naming and structure. Comments should be reserved for non-obvious checkpoints or operational warnings.

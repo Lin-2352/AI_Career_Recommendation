@@ -16,7 +16,9 @@ def main() -> None:
     save_training_outputs(artifact, metrics)
     print(f"Saved model artifact to {MODEL_ARTIFACT_PATH}")
     print(f"Saved metrics to {METRICS_PATH}")
-    print(f"Accuracy: {metrics['metadata']['accuracy']}")
+    print(f"Top-1 accuracy: {metrics['metadata']['accuracy']}")
+    print(f"Top-3 match rate: {metrics['metadata']['top_3_accuracy']}")
+    print(f"Top-5 match rate: {metrics['metadata']['top_5_accuracy']}")
 
 
 if __name__ == "__main__":

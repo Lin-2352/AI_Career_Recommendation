@@ -19,11 +19,11 @@ Open the local URL shown by Streamlit, usually `http://localhost:8501`.
 4. Add interest starters or type your own interests.
 5. Select **Generate recommendation**.
 
-The app returns the best career match, ranked alternatives, confidence values, detected profile signals, and suggested skills to strengthen.
+Required fields are marked with a red star. Optional profile fields can improve the match when they are relevant, but they are not required. The app returns the best career match, ranked alternatives, fit score, model probability, detected profile signals, and suggested skills to strengthen.
 
 ## Interpreting Confidence
 
-Confidence is the model's probability score for a class compared with other trained labels. It is useful for ranking options, but it is not a guarantee of job fit, hiring success, or academic placement.
+Fit score is the top recommendation's share among the displayed ranked matches. Model probability is the classifier's raw probability for that career label. Both values are useful for comparison, but neither is a guarantee of job fit, hiring success, or academic placement.
 
 ## Retraining
 
@@ -41,5 +41,6 @@ The training scripts expect:
 
 - `data/raw/career_guidance.csv`
 - `data/raw/career_recommendation.csv`
+- `data/raw/student_scores_sanitized.csv`
 
-Both files are public career recommendation datasets and should remain free of private user records.
+Training files should remain free of private user records. The original student-score file is sanitized before use and should not be committed.

@@ -2,15 +2,15 @@
   "metadata": {
     "schema_version": 1,
     "application_version": "1.0.0",
-    "trained_at_utc": "2026-05-30T19:09:37+00:00",
-    "record_count": 1171,
-    "training_records": 936,
-    "test_records": 235,
-    "target_count": 37,
-    "estimator": "LogisticRegression",
-    "accuracy": 0.2468,
-    "top_3_accuracy": 0.6213,
-    "top_5_accuracy": 0.9362,
+    "trained_at_utc": "2026-05-30T19:41:55+00:00",
+    "record_count": 3094,
+    "training_records": 2475,
+    "test_records": 619,
+    "target_count": 53,
+    "estimator": "MultinomialNB",
+    "accuracy": 0.3344,
+    "top_3_accuracy": 0.6462,
+    "top_5_accuracy": 0.8691,
     "dependencies": {
       "pandas": "3.0.3",
       "scikit_learn": "1.8.0",
@@ -22,12 +22,17 @@
   "label_distribution": {
     "AI Researcher": 4,
     "AI Specialist": 3,
+    "Accountant": 126,
+    "Artist": 67,
     "Automation Engineer": 3,
     "Backend Developer": 4,
+    "Banker": 167,
     "Biostatistician": 3,
     "Business": 197,
     "Business Analyst": 7,
+    "Business Owner": 309,
     "Cloud Engineer": 4,
+    "Construction Engineer": 66,
     "Content Strategist": 6,
     "Cybersecurity Analyst": 3,
     "Cybersecurity Specialist": 3,
@@ -36,27 +41,43 @@
     "Data Scientist": 6,
     "Deep Learning Engineer": 3,
     "Design": 195,
+    "Designer": 54,
     "DevOps Engineer": 4,
     "Digital Marketer": 11,
+    "Doctor": 71,
     "Embedded Systems Engineer": 3,
     "Finance": 209,
     "Financial Analyst": 6,
     "Front-end Developer": 8,
     "Full Stack Developer": 3,
+    "Game Developer": 63,
+    "Government Officer": 61,
     "Graphic Designer": 10,
     "Healthcare": 192,
+    "Lawyer": 135,
     "Machine Learning Engineer": 7,
     "Marketing Manager": 3,
     "Mobile Developer": 3,
     "NLP Engineer": 4,
     "Project Manager": 8,
+    "Real Estate Developer": 83,
     "Research Analyst": 3,
     "Research Scientist": 4,
+    "Scientist": 37,
+    "Social Network Studies": 216,
     "Software Developer": 7,
-    "Software Engineer": 4,
+    "Software Engineer": 309,
+    "Stock Investor": 73,
+    "Teacher": 59,
     "Tech": 207,
     "UX Designer": 8,
-    "UX Researcher": 4
+    "UX Researcher": 4,
+    "Writer": 31
+  },
+  "source_distribution": {
+    "career_guidance": 1000,
+    "career_recommendation": 171,
+    "student_scores": 1923
   },
   "classification_report": {
     "AI Researcher": {
@@ -65,11 +86,17 @@
       "f1-score": 0.0,
       "support": 1.0
     },
-    "AI Specialist": {
+    "Accountant": {
+      "precision": 1.0,
+      "recall": 0.32,
+      "f1-score": 0.48484848484848486,
+      "support": 25.0
+    },
+    "Artist": {
       "precision": 0.0,
       "recall": 0.0,
       "f1-score": 0.0,
-      "support": 0.0
+      "support": 13.0
     },
     "Automation Engineer": {
       "precision": 0.0,
@@ -78,10 +105,16 @@
       "support": 1.0
     },
     "Backend Developer": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
       "support": 1.0
+    },
+    "Banker": {
+      "precision": 0.3333333333333333,
+      "recall": 0.15151515151515152,
+      "f1-score": 0.20833333333333334,
+      "support": 33.0
     },
     "Biostatistician": {
       "precision": 0.0,
@@ -90,16 +123,22 @@
       "support": 1.0
     },
     "Business": {
-      "precision": 0.2692307692307692,
-      "recall": 0.358974358974359,
-      "f1-score": 0.3076923076923077,
+      "precision": 0.20454545454545456,
+      "recall": 0.23076923076923078,
+      "f1-score": 0.21686746987951808,
       "support": 39.0
     },
     "Business Analyst": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
       "support": 1.0
+    },
+    "Business Owner": {
+      "precision": 0.488,
+      "recall": 0.9838709677419355,
+      "f1-score": 0.6524064171122995,
+      "support": 62.0
     },
     "Cloud Engineer": {
       "precision": 0.0,
@@ -107,17 +146,17 @@
       "f1-score": 0.0,
       "support": 1.0
     },
-    "Content Strategist": {
-      "precision": 0.5,
-      "recall": 1.0,
-      "f1-score": 0.6666666666666666,
-      "support": 1.0
-    },
-    "Cybersecurity Analyst": {
+    "Construction Engineer": {
       "precision": 0.0,
       "recall": 0.0,
       "f1-score": 0.0,
-      "support": 0.0
+      "support": 13.0
+    },
+    "Content Strategist": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
     },
     "Cybersecurity Specialist": {
       "precision": 0.0,
@@ -126,9 +165,9 @@
       "support": 1.0
     },
     "Data Analyst": {
-      "precision": 1.0,
+      "precision": 0.18181818181818182,
       "recall": 0.5,
-      "f1-score": 0.6666666666666666,
+      "f1-score": 0.26666666666666666,
       "support": 4.0
     },
     "Data Engineer": {
@@ -150,10 +189,16 @@
       "support": 1.0
     },
     "Design": {
-      "precision": 0.21951219512195122,
-      "recall": 0.23076923076923078,
-      "f1-score": 0.225,
+      "precision": 0.20833333333333334,
+      "recall": 0.1282051282051282,
+      "f1-score": 0.15873015873015872,
       "support": 39.0
+    },
+    "Designer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 11.0
     },
     "DevOps Engineer": {
       "precision": 0.0,
@@ -162,10 +207,16 @@
       "support": 1.0
     },
     "Digital Marketer": {
-      "precision": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 0.5,
-      "f1-score": 0.6666666666666666,
+      "f1-score": 0.4,
       "support": 2.0
+    },
+    "Doctor": {
+      "precision": 0.3076923076923077,
+      "recall": 0.2857142857142857,
+      "f1-score": 0.2962962962962963,
+      "support": 14.0
     },
     "Embedded Systems Engineer": {
       "precision": 0.0,
@@ -174,9 +225,9 @@
       "support": 1.0
     },
     "Finance": {
-      "precision": 0.18181818181818182,
-      "recall": 0.09523809523809523,
-      "f1-score": 0.125,
+      "precision": 0.21739130434782608,
+      "recall": 0.23809523809523808,
+      "f1-score": 0.22727272727272727,
       "support": 42.0
     },
     "Financial Analyst": {
@@ -186,9 +237,9 @@
       "support": 1.0
     },
     "Front-end Developer": {
-      "precision": 1.0,
-      "recall": 0.5,
-      "f1-score": 0.6666666666666666,
+      "precision": 0.6666666666666666,
+      "recall": 1.0,
+      "f1-score": 0.8,
       "support": 2.0
     },
     "Full Stack Developer": {
@@ -197,17 +248,35 @@
       "f1-score": 0.0,
       "support": 1.0
     },
+    "Game Developer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 13.0
+    },
+    "Government Officer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 12.0
+    },
     "Graphic Designer": {
-      "precision": 1.0,
-      "recall": 0.5,
-      "f1-score": 0.6666666666666666,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
       "support": 2.0
     },
     "Healthcare": {
-      "precision": 0.2653061224489796,
-      "recall": 0.34210526315789475,
-      "f1-score": 0.2988505747126437,
+      "precision": 0.14285714285714285,
+      "recall": 0.10526315789473684,
+      "f1-score": 0.12121212121212122,
       "support": 38.0
+    },
+    "Lawyer": {
+      "precision": 0.4444444444444444,
+      "recall": 0.2962962962962963,
+      "f1-score": 0.35555555555555557,
+      "support": 27.0
     },
     "Machine Learning Engineer": {
       "precision": 0.0,
@@ -228,22 +297,34 @@
       "support": 1.0
     },
     "Project Manager": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
+      "precision": 0.3333333333333333,
+      "recall": 0.5,
+      "f1-score": 0.4,
       "support": 2.0
     },
-    "Research Analyst": {
+    "Real Estate Developer": {
       "precision": 0.0,
       "recall": 0.0,
       "f1-score": 0.0,
-      "support": 0.0
+      "support": 17.0
     },
     "Research Scientist": {
-      "precision": 0.5,
-      "recall": 1.0,
-      "f1-score": 0.6666666666666666,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
       "support": 1.0
+    },
+    "Scientist": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 7.0
+    },
+    "Social Network Studies": {
+      "precision": 0.24561403508771928,
+      "recall": 0.32558139534883723,
+      "f1-score": 0.28,
+      "support": 43.0
     },
     "Software Developer": {
       "precision": 0.0,
@@ -252,15 +333,27 @@
       "support": 1.0
     },
     "Software Engineer": {
-      "precision": 0.5,
-      "recall": 1.0,
-      "f1-score": 0.6666666666666666,
-      "support": 1.0
+      "precision": 0.40268456375838924,
+      "recall": 0.967741935483871,
+      "f1-score": 0.5687203791469194,
+      "support": 62.0
+    },
+    "Stock Investor": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 15.0
+    },
+    "Teacher": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 12.0
     },
     "Tech": {
-      "precision": 0.14285714285714285,
-      "recall": 0.12195121951219512,
-      "f1-score": 0.13157894736842105,
+      "precision": 0.22807017543859648,
+      "recall": 0.3170731707317073,
+      "f1-score": 0.2653061224489796,
       "support": 41.0
     },
     "UX Designer": {
@@ -270,23 +363,29 @@
       "support": 2.0
     },
     "UX Researcher": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
       "support": 1.0
     },
-    "accuracy": 0.24680851063829787,
+    "Writer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 6.0
+    },
+    "accuracy": 0.3344103392568659,
     "macro avg": {
-      "precision": 0.2938534558743618,
-      "recall": 0.28191772687921596,
-      "f1-score": 0.2709663471233344,
-      "support": 235.0
+      "precision": 0.11710444102020534,
+      "recall": 0.1397984889346208,
+      "f1-score": 0.1163717496429196,
+      "support": 619.0
     },
     "weighted avg": {
-      "precision": 0.25164304151627154,
-      "recall": 0.24680851063829787,
-      "f1-score": 0.24018180999086122,
-      "support": 235.0
+      "precision": 0.26090086315809224,
+      "recall": 0.3344103392568659,
+      "f1-score": 0.2656514733308549,
+      "support": 619.0
     }
   }
 }

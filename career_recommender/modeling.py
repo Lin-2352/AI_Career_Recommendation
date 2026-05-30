@@ -8,9 +8,9 @@ import scipy
 import sklearn
 import streamlit
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, top_k_accuracy_score
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
 from career_recommender import __version__
@@ -31,10 +31,7 @@ def build_estimator() -> Pipeline:
             ),
             (
                 "classifier",
-                LogisticRegression(
-                    max_iter=2000,
-                    class_weight="balanced",
-                ),
+                MultinomialNB(alpha=0.1),
             ),
         ]
     )
@@ -67,6 +64,9 @@ def train_career_model(master: pd.DataFrame, test_size: float = 0.2) -> tuple[di
     top_3_accuracy = top_k_accuracy_score(y_test, probabilities, k=3, labels=classes)
     top_5_accuracy = top_k_accuracy_score(y_test, probabilities, k=5, labels=classes)
     label_distribution = {label: int(count) for label, count in labels.value_counts().sort_index().items()}
+    source_distribution = {}
+    if "source" in master.columns:
+        source_distribution = {label: int(count) for label, count in master["source"].value_counts().sort_index().items()}
     metadata = {
         "schema_version": 1,
         "application_version": __version__,
@@ -75,7 +75,7 @@ def train_career_model(master: pd.DataFrame, test_size: float = 0.2) -> tuple[di
         "training_records": int(len(x_train)),
         "test_records": int(len(x_test)),
         "target_count": int(labels.nunique()),
-        "estimator": "LogisticRegression",
+        "estimator": "MultinomialNB",
         "accuracy": round(float(accuracy), 4),
         "top_3_accuracy": round(float(top_3_accuracy), 4),
         "top_5_accuracy": round(float(top_5_accuracy), 4),
@@ -90,6 +90,7 @@ def train_career_model(master: pd.DataFrame, test_size: float = 0.2) -> tuple[di
     metrics = {
         "metadata": metadata,
         "label_distribution": label_distribution,
+        "source_distribution": source_distribution,
         "classification_report": classification_report(y_test, predictions, output_dict=True, zero_division=0),
     }
     artifact = {
@@ -123,4 +124,4 @@ def predict_top_careers(artifact: dict, profile_text: str, top_n: int = 5) -> li
     probabilities = model.predict_proba([profile_text])[0]
     classes = model.named_steps["classifier"].classes_
     ranked = sorted(zip(classes, probabilities, strict=True), key=lambda item: item[1], reverse=True)
-    return [{"career": career, "confidence": float(probability)} for career, probability in ranked[:top_n]]
+    return [{"career": str(career), "confidence": float(probability)} for career, probability in ranked[:top_n]]

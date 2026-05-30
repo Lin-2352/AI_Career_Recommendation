@@ -1,12 +1,12 @@
 # AI Career Recommendation
 
-AI Career Recommendation is a Streamlit and scikit-learn application that recommends career paths from a user's education, skills, and interests. It combines two career datasets, trains a TF-IDF and Logistic Regression model, and serves ranked recommendations through a polished local web app.
+AI Career Recommendation is a Streamlit and scikit-learn application that recommends career paths from a user's education, skills, and interests. It combines career datasets, trains a TF-IDF and Multinomial Naive Bayes model, and serves ranked recommendations through a polished local web app.
 
 ## Features
 
 - Unified data preparation pipeline for both source datasets.
 - TF-IDF text vectorization over education, skills, interests, and age band.
-- Logistic Regression classifier with holdout evaluation.
+- Multinomial Naive Bayes classifier with holdout evaluation.
 - Ranked top career matches with confidence values.
 - Top-3 and top-5 match-rate metrics for ranked recommendation quality.
 - Skill suggestions based on the highest-ranked career.
@@ -26,7 +26,8 @@ AI_Career_Recommendation/
 ├── data/
 │   └── raw/
 │       ├── career_guidance.csv
-│       └── career_recommendation.csv
+│       ├── career_recommendation.csv
+│       └── student_scores_sanitized.csv
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── DEVELOPMENT_WORKFLOW.md
@@ -63,6 +64,7 @@ The repository expects:
 
 - `data/raw/career_guidance.csv`
 - `data/raw/career_recommendation.csv`
+- `data/raw/student_scores_sanitized.csv`
 
 Build the processed training table:
 
@@ -94,6 +96,7 @@ Then open the URL shown by Streamlit, usually `http://localhost:8501`.
 - [Architecture](docs/ARCHITECTURE.md)
 - [User Guide](docs/USER_GUIDE.md)
 - [Development Workflow](docs/DEVELOPMENT_WORKFLOW.md)
+- [Datasets](docs/DATASETS.md)
 
 ## Git Workflow
 
@@ -108,7 +111,7 @@ Recommended branch examples:
 
 ## Security
 
-Do not commit virtual environments, IDE folders, `.env` files, Streamlit secrets, Kaggle credentials, logs, cache folders, or private user data. The `.gitignore` file is configured for those cases.
+Do not commit virtual environments, IDE folders, `.env` files, Streamlit secrets, Kaggle credentials, logs, cache folders, or private user data. The `.gitignore` file excludes the original student-score file because it contains names and email addresses.
 
 ## Limitations
 

@@ -13,6 +13,8 @@ def main() -> None:
     master = build_master_dataset()
     print(f"Prepared {len(master)} records at {MASTER_DATA_PATH}")
     print(f"Career labels: {master['target_career'].nunique()}")
+    print("Sources:")
+    print(master["source"].value_counts().to_string())
 
 
 if __name__ == "__main__":
